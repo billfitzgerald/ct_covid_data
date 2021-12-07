@@ -1,0 +1,3 @@
+<h3>About this report</h3>
+<p>The report is organized by town. The <b>first section</b> for each town includes numbers on new cases and deaths related to Covid.</p>
+<p>The <b>second section</b> for each town contains current vaccination rates, and weekly vaccination rates going back 3 weeks.</p>

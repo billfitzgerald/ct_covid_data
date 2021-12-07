@@ -1,0 +1,1 @@
+<p>The <b>final section</b> contains data about positive cases in the local school system for Lyme and Old Lyme, Regional School District 18. Because of the lack of detail coming from the district relative to other data sources, the data from schools is the least reliable data set in this report. This is discussed in more <a href="#schools">detail below</a>.</p>

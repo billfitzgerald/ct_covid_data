@@ -1,0 +1,14 @@
+<p>The data in the schools section is the least reliable data in this report for a few reasons. And yes, this lack of reliability is less than ideal.</p>
+<p>All of the data we have about positive cases comes directly from the school in the form of email notifications of a positive case. However, the information the school provides when they learn of a positive case is minimal. A sample email notification is included below:</p>
+<blockquote>Dear families,<br>
+Today we were informed of a positive case of COVID-19 impacting SCHOOLNAME. We were able to complete our contact tracing and the individuals who are eligible for quarantine have been notified.  They will follow our existing protocols for close contacts.</blockquote>
+<p>While this email does let us know that there has been a case of Covid detected at a school, it omits information that would be useful for parents, students, and staff to know. Information that the district could share but chooses not to includes:</p>
+<ul>
+<li>The number of people contacted as part of contact tracing;</li>
+<li>Whether the person with Covid is a staff member or student;</li>
+<li>If the person is a student, their grade level;</li>
+<li>The number of people who need to quarantine.</li>
+</ul>
+<p>In addition to these gaps about positive cases, it is difficult to know precisely what is happening within the schools because there is no Covid testing -- pooled or otherwise -- happening onsite. It's difficult to see what you don't look for, and on a practical level this means that claims about positive cases in schools rely on people getting tested outside school. While there is a level of expertise required to do in-school testing well, the state Department of Education offers free <a href="https://portal.ct.gov/ProjectCOVIDDeteCT" title="CT DOE page on free Covid screening">for unvaccinated students</a>. Additionally, <a href="https://www.cdc.gov/coronavirus/2019-ncov/community/schools-childcare/school-testing.html" title="CDC toolkit on testing in schools">CDC guidance</a> states that "(t)esting programs help keep students in the classroom and allow them to take part in the other activities they love." Better data from the district would require additional work from the district, and district staff are already doing a lot, but getting better data about cases in schools would give teachers, students, and families more accurate information, and greater peace of mind.</p>
+<p>Despite these shortcomings in the school data, I am including it here because the data, while not as thorough as possible, is better than nothing.</p>
+<p>All of the data here are pulled from email notifications sent to parents. On rare occasions, the email messages are not precisely clear about the positive cases, and when that happens it's indicated in the "notes" column.</p>
