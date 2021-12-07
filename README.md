@@ -6,7 +6,7 @@ The reports are minimal by design, and include a quick snapshot of positive case
 
 The script can pull data from any town in the dataset, and the time interval covered by the reports is also configurable.
 
-The script also includes an option to export the reports (a daily summary blog post and the more detailed report) into a Wordpress site. To see an example site with this functionality in action, see:
+The script also includes an option to export the reports (a daily summary blog post and the more detailed report) into a Wordpress site. To see a working site with this functionality in action:
 
 * [Daily Snapshots](https://www.oldlymecovid.org/category/daily-snapshot/)
 * [Detailed Report](https://www.oldlymecovid.org/covid-case-rates-and-vaccination-information-for-lyme-and-old-lyme/)
