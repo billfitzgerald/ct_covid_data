@@ -23,7 +23,7 @@ Create a user account for the author that will be publishing. In the profile of 
 
 # Caveats and disclaimers
 
-This script works, but that is not the same as it being good. This script contains multiple hacks; I'm not a developer, and any code I wrote shows that very clearly. About the only good thing I can say about this code is that it works.
+This script works, but that is not the same as it being good. This script contains multiple hacks; I'm not a developer, and any code I write shows that very clearly. About the only good thing I can say about this code is that it works.
 
 Pull requests and improvements are welcome. 
 
