@@ -13,7 +13,7 @@ town_list = ['Lyme', 'Old Lyme']
 run_vax = "yes" ## leave this as 'yes'
 run_cases = "yes" ## leave this as 'yes'
 run_schools = "yes"
-export_to_wordpress = "yes"
+export_to_wordpress = "no"
 export_to_twitter = "no"
 ### Case-specific information
 case_initial = 6 # number of most recent reports to show
@@ -34,6 +34,22 @@ creds = "creds/creds.ini"
 ###########################################
 # Use care if adjusting values below here #
 ###########################################
+
+## Functions      ##
+## Clean up dates ##
+def unique_list(raw_list):
+	# insert the list to the set
+	list_set = set(raw_list)
+	# convert the set to the list
+	unique_list = (list(list_set))
+	return unique_list
+
+def list_clean(list_items):
+	holding=[]
+	for l in list_items:
+		l_clean = str(l).split(" ")[0]
+		holding.append(l_clean)
+	return(holding)
 
 #date/time info
 rightnow = dt.datetime.today()
@@ -154,7 +170,7 @@ if run_vax == "yes":
 			report_date = datetime.strptime(b['reported_date'], '%Y-%m-%d')
 			if report_date not in rdl:
 				rdl.append(report_date)
-#sort dates with most recent first
+# sort dates with most recent first
 			rdl.sort(reverse=True)
 			vax_report_date_list = rdl[:vax_initial]
 		vax_current_report_date = rdl[0].strftime("%b %d, %Y")
@@ -242,10 +258,20 @@ if run_cases == "yes":
 			report_date = datetime.strptime(b['date'], '%Y-%m-%d')
 			if report_date not in cdl:
 				cdl.append(report_date)
-		#sort dates with most recent first
+		# sort dates with most recent first
 		cdl.sort(reverse=True)
 		case_report_date_list = cdl[:case_initial]
 		startd = case_report_date_list[0]
+		## get day lists - 7 and 14
+		seven_dl_raw = [startd - dt.timedelta(days=x) for x in range(7)]
+		clean_date_seven_dl = unique_list(seven_dl_raw)
+		clean_date_seven_dl.sort(reverse=True)
+		clean_string_seven_dl = list_clean(clean_date_seven_dl)
+		fourteen_dl_raw = [startd - dt.timedelta(days=x) for x in range(14)]
+		clean_date_fourteen_dl = unique_list(fourteen_dl_raw)
+		clean_date_fourteen_dl.sort(reverse=True)
+		clean_string_fourteen_dl = list_clean(clean_date_fourteen_dl)
+		# lists populated; moving on
 		human_startd = startd.strftime("%b %d, %Y")
 		endd = case_report_date_list[case_initial - 1]
 		human_endd = endd.strftime("%b %d, %Y")
@@ -349,6 +375,7 @@ if run_cases == "yes":
 else:
 	pass
 
+
 ## Schools
 ## This section is largely manual - blech
 ## Read in intro text from file
@@ -363,10 +390,15 @@ if run_schools == "yes":
 
 	school_case_header = f'\n<table><tr class="cases"><th> Reported Date </th><th> Cases </th><th> School </th><th> Notes or Explanations </th></tr>'
 	school_case_count = 0
+	school_count_interval = 0
 	for r, s in df_school_data.iterrows():
 		school_date = s['date']
 		cases = s['cases']
 		school_case_count = school_case_count + int(cases)
+		if school_date in clean_string_fourteen_dl:
+			school_count_interval = school_count_interval + int(cases)
+		else:
+			pass
 		school = s['school']
 		notes = s['notes']
 		if notes == "none":
@@ -375,8 +407,15 @@ if run_schools == "yes":
 			pass
 		school_line = f"<tr><td>{school_date}</td><td>{cases}</td><td>{school}</td><td>{notes}</td></tr>"
 		school_case_header = school_case_header + school_line
+	# data prep for human-friendly versions
+	sdb = datetime.strptime(clean_string_fourteen_dl[0], '%Y-%m-%d')
+	sd_begin = sdb.strftime("%b %d, %Y")
+	sde = datetime.strptime(clean_string_fourteen_dl[-1], '%Y-%m-%d')
+	sd_end = sde.strftime("%b %d, %Y")
+
+	school_case_interval = f"<p>In the <b>{len(clean_string_fourteen_dl)} days</b> between {sd_begin} and {sd_end}, Lyme-Old Lyme Regional School District 18 has disclosed knowledge of <b>{school_count_interval} people</b> in the schools with Covid.</p>"
 	school_cases_text = f'<p>As of {human_startd}, the district superintendent has disclosed that <b>{str(school_case_count)} people in Lyme-Old Lyme Schools</b> have tested positive for Covid in the 2021-2022 school year.</p>'
-	schools_full = schools_text_header + school_cases_text + schools_text + school_case_header + "</table>"
+	schools_full = schools_text_header + school_case_interval + school_cases_text + schools_text + school_case_header + "</table>"
 else:
 	schools_full = ""
 
@@ -392,12 +431,12 @@ with open(style_declaration) as f:
 
 with open(opening) as f:
 	intro_blurb = f.read()
-report_summary = style + report_summary + intro_blurb
 
 if run_schools == "yes":
+	school_opening = f'<h3>Positive Cases in Schools</h3>{school_case_interval}<p>Read the detailed breakdown on <a href="#schools" title="Breakdown of positive cases in schools">Positive Cases in Schools.</a>'
 	with open(ifschools) as f:
 		school_blurb = f.read()
-	report_summary = report_summary + school_blurb
+	report_summary = style + report_summary + school_opening + intro_blurb + school_blurb
 else:
 	pass
 
