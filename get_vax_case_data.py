@@ -12,7 +12,7 @@ import base64
 town_list = ['Lyme', 'Old Lyme']
 run_vax = "yes" ## leave this as 'yes'
 run_cases = "yes" ## leave this as 'yes'
-run_schools = "yes"
+run_schools = "no"
 export_to_wordpress = "no"
 export_to_twitter = "no"
 ### Case-specific information
@@ -438,7 +438,7 @@ if run_schools == "yes":
 		school_blurb = f.read()
 	report_summary = style + report_summary + school_opening + intro_blurb + school_blurb
 else:
-	pass
+	report_summary = style + report_summary + intro_blurb
 
 report_summary = report_summary + "<p>" + run_time + "</p>" + anchor_links + "\n<hr>"
 df_report.sort_values(by=['sequence'], inplace=True)
