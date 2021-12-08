@@ -12,8 +12,8 @@ import base64
 town_list = ['Lyme', 'Old Lyme']
 run_vax = "yes" ## leave this as 'yes'
 run_cases = "yes" ## leave this as 'yes'
-run_schools = "no"
-export_to_wordpress = "no"
+run_schools = "yes"
+export_to_wordpress = "yes"
 export_to_twitter = "no"
 ### Case-specific information
 case_initial = 6 # number of most recent reports to show
@@ -62,7 +62,6 @@ current = f"{sy}-{sm}-{sd}T00:00:00"
 # vax date values - generally no need to adjust this unless you want a longer time interval
 startdate = '2021-03-17T00:00:00'
 enddate = current
-age_ranges = ['5-11', '12-17', '18-24', '25-44', '45-64', '65+'] # do not adjust these values
 
 #case values - generally no need to adjust this unless you want a longer time interval
 startcase = '2021-03-17T00:00:00'
@@ -109,7 +108,8 @@ title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}"
 blog_title = f"Daily Summary for {alltowns}"
 intro_text = '<p>This report uses data from the <a href="https://data.ct.gov/" alt="Open Data from the state of Connecticut" title="Open Data from the state of Connecticut">Connecticut Open Data Portal</a>. Data on <a href="https://data.ct.gov/Health-and-Human-Services/COVID-19-Vaccinations-by-Town-and-Age-Group/gngw-ukpw" alt="CT Data Portal data source" title="CT Data Portal data source">vaccination rates</a> are updated weekly; data on <a href="https://data.ct.gov/Health-and-Human-Services/COVID-19-Tests-Cases-and-Deaths-By-Town-/28fr-iqnx" alt="CT Data Portal data source" title="CT Data Portal data source">positive cases and deaths</a> are updated on weekdays (no weekends or holidays).</p>'
 blog_source = intro_text
-report_summary = intro_text + "<h3>Overview</h3>"
+report_intro = intro_text + "<h3>Overview</h3>"
+report_summary = ""
 
 anchor_links = "<h3>Jump to detailed reports:</h3><ul>"
 for t in town_list:
@@ -250,6 +250,8 @@ if run_cases == "yes":
 
 # filter dataset by town and get counts
 	blog_cases = ""
+	one_count = 0
+	two_count = 0
 	for t in town_list:
 		df_cases_filter = df_cases[(df_cases['town'] == t)]
 		town_cases_text = ""
@@ -262,6 +264,7 @@ if run_cases == "yes":
 		cdl.sort(reverse=True)
 		case_report_date_list = cdl[:case_initial]
 		startd = case_report_date_list[0]
+		startd_plus_one = case_report_date_list[1]
 		## get day lists - 7 and 14
 		seven_dl_raw = [startd - dt.timedelta(days=x) for x in range(7)]
 		clean_date_seven_dl = unique_list(seven_dl_raw)
@@ -309,6 +312,7 @@ if run_cases == "yes":
 					pass
 		case24 = int(base_cases) - int(day_cases)
 		death24 = int(base_deaths) - int(day_deaths)
+		one_count = one_count + case24
 		if case24 == 1:
 			ccl24 = f"{case24} person"
 		else:
@@ -339,7 +343,6 @@ if run_cases == "yes":
 		report_summary = report_summary + day_rate + "\n" + case_rate + "\n"
 		obj_report = pd.Series([t, town_cases_text, "aa"], index=df_report.columns)
 		df_report = df_report.append(obj_report, ignore_index=True)
-		
 
 ## Work through intervals	
 		full_interval = ""
@@ -369,9 +372,12 @@ if run_cases == "yes":
 		full_interval = f"<h3>Cases over time in {t}</h3>" + change_text + caseline
 		obj_report = pd.Series([t, full_interval, "ba"], index=df_report.columns)
 		df_report = df_report.append(obj_report, ignore_index=True)
-
+	summ_day_diff = startd - startd_plus_one
+	summ_day = str(summ_day_diff).split(",")
+	day_summary = f"In {alltowns}, {one_count} people have tested positive for Covid in the <b>{summ_day[0]}</b> between {human_startd} and {day_date}."
 	run_time = run_time + f'The most recent data on cases and deaths included here is from <b>{human_startd}</b>. '
 	blog_title = blog_title + " for " + human_startd
+	report_intro = report_intro + day_summary
 else:
 	pass
 
@@ -416,6 +422,7 @@ if run_schools == "yes":
 	school_case_interval = f"<p>In the <b>{len(clean_string_fourteen_dl)} days</b> between {sd_begin} and {sd_end}, Lyme-Old Lyme Regional School District 18 has disclosed knowledge of <b>{school_count_interval} people</b> in the schools with Covid.</p>"
 	school_cases_text = f'<p>As of {human_startd}, the district superintendent has disclosed that <b>{str(school_case_count)} people in Lyme-Old Lyme Schools</b> have tested positive for Covid in the 2021-2022 school year.</p>'
 	schools_full = schools_text_header + school_case_interval + school_cases_text + schools_text + school_case_header + "</table>"
+	report_intro = report_intro + school_case_interval
 else:
 	schools_full = ""
 
@@ -451,7 +458,7 @@ for t in town_list:
 	named_anchor_town = ''.join(t.split()).lower()
 	named_anchor_town = f'id="{named_anchor_town}"'
 	all_text = all_text + "<h2 " + named_anchor_town + ">" + t + "</h2>" + core_text + "<hr>"
-doc_text = report_summary + all_text + schools_full
+doc_text = report_intro + report_summary + all_text + schools_full
 htmlfile = scan_datetime + ".html"
 
 with open(report_dir + htmlfile, 'w') as g:
@@ -476,6 +483,7 @@ if export_to_wordpress == "yes":
 	credentials = user + ':' + password
 	token = base64.b64encode(credentials.encode())
 	header = {'Authorization': 'Basic ' + token.decode('utf-8')}
+	
 	## update the page
 	page = {
 		'title':title,
@@ -488,11 +496,12 @@ if export_to_wordpress == "yes":
 		print(f"\nThe page titled '{title}' updated sucessfully,\n")
 	else: 
 		print(f"There seems to be an issue with the update. This was the response code:\n{response}")
-
+	
 	blog_full_report = f'See the <a href="https://www.oldlymecovid.org/covid-case-rates-and-vaccination-information-for-lyme-and-old-lyme/" title="Full report of current data on Covid cases and vaccinations">detailed report of current information here</a>.'
 
-	blog_content = style + run_time + blog_full_report + blog_cases + blog_vax_text + blog_source
-
+	blog_content = style + run_time + blog_full_report + report_intro + "<p>" + blog_full_report + "</p>" + blog_cases + blog_vax_text + blog_source
+	print(blog_content)
+	
 	post = {
 		'title':blog_title,
 		'status': 'publish', 
@@ -506,7 +515,7 @@ if export_to_wordpress == "yes":
 		print(f"The blog post titled '{blog_title}' was created.\n")
 	else: 
 		print(f"There seems to be an issue with creating the post. This was the response code:\n{response_post}\nThis is the blog text:\n{blog_content}")
-
+	
 else:
 	pass
 
