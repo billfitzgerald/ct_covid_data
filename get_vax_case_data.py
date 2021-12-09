@@ -15,7 +15,7 @@ export_to_wordpress = "no"
 ## External sources
 opening = "source/opening.txt"
 style_declaration = "source/style.txt"
-creds = "creds/creds.ini"
+creds = "creds/creds_batch.ini"
 population = "source/ct_population.csv"
 
 ### Case-specific information
@@ -155,10 +155,6 @@ for bf in batch_files:
 			blog_vax_text = ""
 			for t in town_list:
 				vaxcount = 0
-				df_pop_filter = df_population[(df_population['town'] == t)]
-				town_pop = df_pop_filter['pop'].iloc[0]
-				tp = int(town_pop)
-				total_population = total_population + tp
 				df_vax_filter = df_vax[(df_vax['town'] == t)]
 				named_anchor_vax = ''.join(t.split()).lower()
 				named_anchor_vax = f'id="{named_anchor_vax}-vaccination"'
@@ -257,6 +253,7 @@ for bf in batch_files:
 				town_pop = df_pop_filter['pop'].iloc[0]
 				tp = int(town_pop)
 				total_population = total_population + tp
+				tp = "{:,}".format(tp)
 				# Get cases for the town
 				df_cases_filter = df_cases[(df_cases['town'] == t)]
 				town_cases_text = ""
@@ -338,7 +335,7 @@ for bf in batch_files:
 					dcl = f"{death_change} people"
 				day_rate = f"<h3>Positive Cases and Deaths in {t}</h3><p>{tp} people live in {t}</p><ul><li>In the <b>{day_diff[0]}</b> between the two most recent reports on {human_startd} and {day_date}, <b>{ccl24} contracted Covid</b>, and <b>{dcl24} died</b> as a result of Covid.</li>"
 				if case24 == 0 and death24 == 0:
-					day_rate = f"<h3>Positive Cases and Deaths in {t}</h3><ul><li>In the <b>{day_diff[0]}</b> between the two most recent reports, no people have contracted Covid, or died as a result of Covid.</li>"
+					day_rate = f"<h3>Positive Cases and Deaths in {t}</h3><p>{tp} people live in {t}</p><ul><li>In the <b>{day_diff[0]}</b> between the two most recent reports, no people have contracted Covid, or died as a result of Covid.</li>"
 				else:
 					pass
 				case_rate = f"<li>In the <b>{difference[0]}</b> between {human_startd} and {end_date}, <b>{ccl} contracted Covid</b> and <b>{dcl} died</b> as a result of Covid.</li></ul>"
@@ -382,7 +379,8 @@ for bf in batch_files:
 			day_summary = f"In {alltowns}, {one_count} people have tested positive for Covid in the <b>{summ_day[0]}</b> between {human_startd} and {day_date}."
 			run_time = run_time + f'The most recent data on cases and deaths included here is from <b>{human_startd}</b>. '
 			blog_title = blog_title + " for " + human_startd
-			population_batch = f"{total_population} people live in {alltowns}" 
+			total_population = "{:,}".format(total_population)
+			population_batch = f"<p>{total_population} people live in {alltowns}</p>" 
 			report_intro = report_intro + population_batch + day_summary
 		else:
 			pass
