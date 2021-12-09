@@ -34,6 +34,16 @@ vax_initial = 3 # number of most recent vax level reports to show
 run_vax = "yes" ## leave this as 'yes'
 run_cases = "yes" ## leave this as 'yes'
 
+#Read creds.ini file
+config = ConfigParser()
+config.read(creds)
+#Get options for details to include in summaries, and file format export options
+creds = config["WORDPRESS"]
+url_page = creds["url_page"]
+url_post = creds["url_post"]
+user = creds["username"]
+password = creds["password"]
+
 ## Functions      ##
 ## Clean up dates ##
 def unique_list(raw_list):
@@ -97,6 +107,7 @@ with open(population) as input:
 for bf in batch_files:
 	fn = path_to_batches + bf
 	with open(fn) as input:
+		print(f"Processing towns from {bf}\n")
 		total_population = 0
 		data = json.load(input)
 		alltowns = data['batch_name']
@@ -109,7 +120,7 @@ for bf in batch_files:
 		school_intro = data['school_intro']
 		school_cases = data['school_cases']
 		pageID = data['pageID']
-		categoryID = data['categoryID']
+		category = data['categoryID']
 		post_author = data['post_author']
 		output_file = data['output']
 		detailed_report_url = data['detailed_report_url']
@@ -140,7 +151,7 @@ for bf in batch_files:
 			rdl = []
 			enddate_str = enddate[:10]
 			for t in town_list:
-				print(f"Getting vaccination rate data for {t}\n")
+				print(f"   * Getting vaccination rate data for {t}\n")
 				vax_url = f"https://data.ct.gov/resource/gngw-ukpw.json?town={t}&$where=dateupdated%20between%20'{startdate}'%20and%20'{enddate}'"
 				vax_data = json.loads(requests.get(vax_url).text)
 				for v in vax_data:
@@ -231,7 +242,7 @@ for bf in batch_files:
 			endcase_str = endcase[:10]
 			case_calcdate = datetime.strptime(endcase_str, '%Y-%m-%d')
 			for t in town_list:
-				print(f"Getting case and death rate data for {t}\n")
+				print(f"   - Getting case and death rate data for {t}\n")
 				case_url = f"https://data.ct.gov/resource/28fr-iqnx.json?town={t}&$where=lastupdatedate between '{startcase}' and '{endcase}'"
 				case_data = json.loads(requests.get(case_url).text)
 				past_case = 0
@@ -432,7 +443,7 @@ for bf in batch_files:
 			schools_full = ""
 
 		## Generate report
-		print(f"Generating an html report.\n")
+		print(f"--- Generating an html report.\n")
 		## Using <style> in this way is Very Not Good
 		## These declarations should generally be in the head; because 
 		## this doesn't generate a head (or really a body either) I'm 
@@ -470,17 +481,8 @@ for bf in batch_files:
 			g.write(f"<h2>{title}</h2>{doc_text}")
 
 		if export_to_wordpress == "yes":
-			print(f"Updating the site. This might take a minute.")
-			#Read creds.ini file
-			config = ConfigParser()
-			config.read(creds)
+			print(f" ** Updating the site. This might take a minute.")
 
-			#Get options for details to include in summaries, and file format export options
-			creds = config["WORDPRESS"]
-			url_page = creds["url_page"]
-			url_post = creds["url_post"]
-			user = creds["username"]
-			password = creds["password"]
 
 			credentials = user + ':' + password
 			token = base64.b64encode(credentials.encode())
@@ -495,7 +497,7 @@ for bf in batch_files:
 
 			# post summary blog
 			if str(response_page) == "<Response [200]>":
-				print(f"\nThe page titled '{title}' updated sucessfully,\n")
+				print(f" ** The page titled '{title}' updated sucessfully,\n")
 			else: 
 				print(f"There seems to be an issue with the update. This was the response code:\n{response}")
 
@@ -512,7 +514,7 @@ for bf in batch_files:
 
 			response_post = requests.post(url_post, headers=header, json=post)
 			if str(response_post) == "<Response [201]>":
-				print(f"The blog post titled '{blog_title}' was created.\n")
+				print(f"** The blog post titled '{blog_title}' was created.\n")
 			else: 
 				print(f"There seems to be an issue with creating the post. This was the response code:\n{response_post}\nThis is the blog text:\n{blog_content}")
 
