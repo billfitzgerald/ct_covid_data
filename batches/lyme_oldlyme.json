@@ -1,6 +1,7 @@
 {
   "batch_name":"Lyme and Old Lyme",
   "batch_desc":"",
+  "output":"lyme_oldlyme",
   "town_list":[
     "Lyme", 
     "Old Lyme"
@@ -12,6 +13,5 @@
   "run_schools":"yes",
   "ifschools":"source/ifschools.txt",
   "school_intro":"source/school_intro.txt",
-  "school_cases":"source/school_cases.csv",
-  "output":"lyme_oldlyme"
+  "school_cases":"source/school_cases.csv"
 }

@@ -9,8 +9,8 @@ from configparser import ConfigParser
 import base64
 
 path_to_batches = "batches/"
-batch_files = ["ct_river_area.json", 'ledgelight.json']
-export_to_wordpress = "yes"
+batch_files = ["ct_river_area.json", 'ledgelight.json', 'lyme_oldlyme.json']
+export_to_wordpress = "no"
 
 ## External sources
 opening = "source/opening.txt"
@@ -108,6 +108,9 @@ for bf in batch_files:
 	fn = path_to_batches + bf
 	with open(fn) as input:
 		print(f"Processing towns from {bf}\n")
+		df_vax = df_vax[0:0]
+		df_cases = df_cases[0:0]
+		df_report = df_report[0:0]
 		total_population = 0
 		data = json.load(input)
 		alltowns = data['batch_name']

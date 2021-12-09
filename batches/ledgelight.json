@@ -1,6 +1,7 @@
 {
-  "batch_name":"LedgeLight Health District",
-  "batch_desc":"LedgeLight Health District comprises the towns of East Lyme, Groton, Ledyard, Lyme, New London, North Stonington, Old Lyme, Stonington, and Waterford.",
+  "batch_name":"Ledge Light Health District",
+  "batch_desc":"Ledge Light Health District comprises the towns of East Lyme, Groton, Ledyard, Lyme, New London, North Stonington, Old Lyme, Stonington, and Waterford.",
+  "output":"ledgelight",
   "town_list":[
     "East Lyme",
     "Groton",
@@ -19,6 +20,5 @@
   "run_schools":"no",
   "ifschools":"",
   "school_intro":"",
-  "school_cases":"",
-  "output":"ledgelight"
+  "school_cases":""
 }

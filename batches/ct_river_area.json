@@ -1,6 +1,7 @@
 {
   "batch_name":"Connecticut River Area Health District",
   "batch_desc":"The Connecticut River Area Health District comprises the towns of  Clinton, Old  Saybrook , Deep River , Haddam, and Chester.",
+  "output":"crahd",
   "town_list":[
     "Clinton",
     "Old Saybrook",
@@ -15,6 +16,5 @@
   "run_schools":"no",
   "ifschools":"",
   "school_intro":"",
-  "school_cases":"",
-  "output":"crahd"
+  "school_cases":""
 }
