@@ -8,12 +8,13 @@
     "Haddam",
     "Chester"
   ],
-  "pageID":"",
-  "categoryID":"",
+  "detailed_report_url":"https://www.oldlymecovid.org/connecticut-river-area/",
+  "pageID":"161",
+  "categoryID":"9",
   "post_author":"2",
   "run_schools":"no",
   "ifschools":"",
   "school_intro":"",
   "school_cases":"",
-  "output":"ledgelight"
+  "output":"crahd"
 }

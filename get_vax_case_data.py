@@ -9,8 +9,8 @@ from configparser import ConfigParser
 import base64
 
 path_to_batches = "batches/"
-batch_files = ["lyme_oldlyme.json", 'ledgelight.json']
-export_to_wordpress = "no"
+batch_files = ["ct_river_area.json", 'ledgelight.json']
+export_to_wordpress = "yes"
 
 ## External sources
 opening = "source/opening.txt"
@@ -112,6 +112,7 @@ for bf in batch_files:
 		categoryID = data['categoryID']
 		post_author = data['post_author']
 		output_file = data['output']
+		detailed_report_url = data['detailed_report_url']
 		# Set initial reporting language
 		title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}"
 		blog_title = f"Daily Summary for {alltowns}"
@@ -484,7 +485,7 @@ for bf in batch_files:
 			credentials = user + ':' + password
 			token = base64.b64encode(credentials.encode())
 			header = {'Authorization': 'Basic ' + token.decode('utf-8')}
-			'''
+
 			## update the page
 			page = {
 				'title':title,
@@ -497,12 +498,10 @@ for bf in batch_files:
 				print(f"\nThe page titled '{title}' updated sucessfully,\n")
 			else: 
 				print(f"There seems to be an issue with the update. This was the response code:\n{response}")
-			'''
-			blog_full_report = f'See the <a href="https://www.oldlymecovid.org/covid-case-rates-and-vaccination-information-for-lyme-and-old-lyme/" title="Full report of current data on Covid cases and vaccinations">detailed report of current information here</a>.'
 
+			blog_full_report = f'See the <a href="{detailed_report_url}" title="Full report of current data on Covid cases and vaccinations">detailed report of current information</a>.'
 			blog_content = style + run_time + blog_full_report + report_intro + "<p>" + blog_full_report + "</p>" + blog_cases + blog_vax_text + blog_source
-			print(blog_content)
-			'''
+
 			post = {
 				'title':blog_title,
 				'status': 'publish', 
@@ -516,7 +515,7 @@ for bf in batch_files:
 				print(f"The blog post titled '{blog_title}' was created.\n")
 			else: 
 				print(f"There seems to be an issue with creating the post. This was the response code:\n{response_post}\nThis is the blog text:\n{blog_content}")
-			'''
+
 		else:
 			pass
 
