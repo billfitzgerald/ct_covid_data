@@ -9,8 +9,8 @@ from configparser import ConfigParser
 import base64
 
 path_to_batches = "batches/"
-batch_files = ["ct_river_area.json", 'ledgelight.json', 'lyme_oldlyme.json']
-export_to_wordpress = "no"
+batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
+export_to_wordpress = "yes"
 
 ## External sources
 opening = "source/opening.txt"
@@ -25,7 +25,6 @@ case_initial = 6 # number of most recent reports to show
 case_interval = [10, 20, 64, 128]
 ### Vax specific information
 vax_initial = 3 # number of most recent vax level reports to show
-
 
 ###########################################
 # Use care if adjusting values below here #
