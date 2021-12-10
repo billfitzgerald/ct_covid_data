@@ -14,6 +14,7 @@ export_to_wordpress = "yes"
 
 ## External sources
 opening = "source/opening.txt"
+data_intro = "source/data_intro.txt"
 style_declaration = "source/style.txt"
 creds = "creds/creds_batch.ini"
 population = "source/ct_population.csv"
@@ -129,7 +130,8 @@ for bf in batch_files:
 		# Set initial reporting language
 		title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}"
 		blog_title = f"Daily Summary for {alltowns}"
-		intro_text = '<p>This report uses data from the <a href="https://data.ct.gov/" alt="Open Data from the state of Connecticut" title="Open Data from the state of Connecticut">Connecticut Open Data Portal</a>. Data on <a href="https://data.ct.gov/Health-and-Human-Services/COVID-19-Vaccinations-by-Town-and-Age-Group/gngw-ukpw" alt="CT Data Portal data source" title="CT Data Portal data source">vaccination rates</a> are updated weekly; data on <a href="https://data.ct.gov/Health-and-Human-Services/COVID-19-Tests-Cases-and-Deaths-By-Town-/28fr-iqnx" alt="CT Data Portal data source" title="CT Data Portal data source">positive cases and deaths</a> are updated on weekdays (no weekends or holidays).</p>'
+		with open(data_intro) as di:
+			intro_text = di.read()
 		blog_source = intro_text
 		report_intro = intro_text + "<h3>Overview</h3>" + batch_desc
 		report_summary = ""
