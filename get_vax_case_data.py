@@ -91,7 +91,6 @@ minute = rightnow.strftime("%M")
 
 scan_datetime = f"{year}_{month}_{day}_{hour}_{minute}"
 nowoclock = rightnow.strftime("%b %d, %Y")
-run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
 
 # set ouput directories
 report_dir = 'report/'
@@ -121,6 +120,7 @@ for bf in batch_files:
 		df_report = df_report[0:0]
 		df_fips = df_fips[0:0]
 		total_population = 0
+		run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
 		data = json.load(input)
 		alltowns = data['batch_name']
 		batch_desc = data['batch_desc']
@@ -181,7 +181,7 @@ for bf in batch_files:
 			fcdate.sort(reverse=True)
 			df_fips_filter = df_fips[(df_fips['report_date'] == fcdate[0])]
 			county_rep_date = fcdate[0][:10]
-			county_text = f"<b>{county_text}</b> County data reported on <b>{county_rep_date}</b>."
+			county_text = f"<p><b>{county_text}</b> County data reported on <b>{county_rep_date}</b>.</p>"
 			county_line = ""
 			for a,b in df_fips_filter.iterrows():
 				date = b['report_date']
@@ -207,7 +207,7 @@ for bf in batch_files:
 		with open(data_intro) as di:
 			intro_text = di.read()
 		blog_source = intro_text
-		report_intro = intro_text + "<h3>Overview</h3>" + batch_desc
+		report_intro = intro_text + "<h2>1. Overview</h2>" + batch_desc
 		report_summary = ""
 		# Set link to named anchors
 		anchor_links = "<h3>Jump to detailed reports:</h3><ul>"
@@ -482,7 +482,8 @@ for bf in batch_files:
 		## This section is largely manual - blech
 		## Read in intro text from file
 		if run_schools == "yes":
-			schools_text_header = '<h2 id="schools">Positive Cases in Schools</h2>'
+			school_num = str(len(town_list) + 2)
+			schools_text_header = f'<h2 id="schools">{school_num}. Positive Cases in Schools</h2>'
 			print(f"Processing school data.\n")
 			with open(school_intro) as f:
 				schools_text = f.read()
@@ -546,14 +547,16 @@ for bf in batch_files:
 		report_summary = report_summary + "<p>" + run_time + "</p>" + anchor_links + "\n<hr>"
 		df_report.sort_values(by=['sequence'], inplace=True)
 		all_text = ""
+		town_count = 1
 		for t in town_list:
+			town_count += 1
 			df_report_filter = df_report[df_report['town'] == t]
 			core_text = ""
 			for p,q in df_report_filter.iterrows():
 				core_text = core_text + q['text']
 			named_anchor_town = ''.join(t.split()).lower()
 			named_anchor_town = f'id="{named_anchor_town}"'
-			all_text = all_text + "<h2 " + named_anchor_town + ">" + t + "</h2>" + core_text + "<hr>"
+			all_text = all_text + "<h2 " + named_anchor_town + ">" + str(town_count) + ". " + t + "</h2>" + core_text + "<hr>"
 		doc_text = report_intro + report_summary + all_text + schools_full
 		htmlfile = output_file + "_" + scan_datetime + ".html"
 
