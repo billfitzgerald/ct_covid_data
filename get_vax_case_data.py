@@ -189,7 +189,6 @@ for bf in batch_files:
 				seven_day = b['seven_day']
 				positivity = b['positivity']
 				level = b['level']
-
 				county_line = f"<p>{county_line}{county} has a seven day rate of <b>{seven_day} cases per 100k people</b>.<ul><li>Test positivity: <b>{positivity}%</b></li><li>Community transmission level: <b>{level}</b></li></ul></p>"
 			county_text = county_text + county_line
 		run_schools = data['run_schools']
@@ -207,7 +206,7 @@ for bf in batch_files:
 		with open(data_intro) as di:
 			intro_text = di.read()
 		blog_source = intro_text
-		report_intro = intro_text + "<h2>1. Overview</h2>" + batch_desc
+		report_intro = intro_text + "<h2>1. Overview</h2>" + batch_desc + county_text
 		report_summary = ""
 		# Set link to named anchors
 		anchor_links = "<h3>Jump to detailed reports:</h3><ul>"
@@ -215,10 +214,11 @@ for bf in batch_files:
 			named_anchor = ''.join(t.split()).lower()
 			named_anchor_vax = f'"#{named_anchor}-vaccination"'
 			named_anchor_cases = f'"#{named_anchor}-cases"'
-			links = f'<li>{t}: <a href={named_anchor_cases}>Information about people contracting Covid;</a></li><li>{t}: <a href={named_anchor_vax}>Information about people getting vaccinated;</a></li>'
+			nat = f'"#{named_anchor}"'
+			links = f'<li><a href={nat}>{t}</a></li>'
 			anchor_links = anchor_links + links
 		if run_schools == "yes":
-			anchor_links = anchor_links + f'<li><a href="#schools">Positive cases in schools.</a></a></li></ul>'
+			anchor_links = anchor_links + f'</ul><a href="#schools">Positive cases in schools.</a>'
 		else:
 			anchor_links = anchor_links + "</ul>"
 
@@ -434,7 +434,7 @@ for bf in batch_files:
 				cases_current = day_rate + "\n" + case_rate + "\n" + cases_header + "\n" + casesline + "</table>"
 				blog_cases = blog_cases + day_rate + "\n" + case_rate
 				town_cases_text = town_cases_text + cases_current + "\n"
-				report_summary = report_summary + county_text + day_rate + "\n" + case_rate + "\n"
+				report_summary = report_summary + day_rate + "\n" + case_rate + "\n"
 				obj_report = pd.Series([t, town_cases_text, "aa"], index=df_report.columns)
 				df_report = df_report.append(obj_report, ignore_index=True)
 
