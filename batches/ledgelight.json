@@ -13,6 +13,10 @@
     "Stonington",
     "Waterford"
   ],
+  "run_cdc":"yes",
+  "fips_code":[
+    "09011"
+  ],
   "detailed_report_url":"https://www.oldlymecovid.org/ledgelight/",
   "pageID":"159",
   "categoryID":"8",
