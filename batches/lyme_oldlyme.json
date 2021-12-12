@@ -6,6 +6,10 @@
     "Lyme", 
     "Old Lyme"
   ],
+  "run_cdc":"yes",
+  "fips_code":[
+    "09011"
+  ],
   "detailed_report_url":"https://www.oldlymecovid.org/covid-case-rates-and-vaccination-information-for-lyme-and-old-lyme/",
   "pageID":"11",
   "categoryID":"4",

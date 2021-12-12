@@ -10,7 +10,7 @@ import base64
 
 path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
-export_to_wordpress = "yes"
+export_to_wordpress = "no"
 
 ## External sources
 opening = "source/opening.txt"
@@ -63,10 +63,17 @@ def list_clean(list_items):
 #date/time info
 rightnow = dt.datetime.today()
 starttime = rightnow + dt.timedelta(days=1)
+week_away = rightnow + dt.timedelta(days=-7)
 sy = starttime.strftime("%Y")
 sm = starttime.strftime("%m")
 sd = starttime.strftime("%d")
 current = f"{sy}-{sm}-{sd}T00:00:00"
+
+way = week_away.strftime("%Y")
+wam = week_away.strftime("%m")
+wad = week_away.strftime("%d")
+week_prior = f"{way}-{wam}-{wad}T00:00:00"
+
 
 # vax date values - generally no need to adjust this unless you want a longer time interval
 startdate = '2021-03-17T00:00:00'
@@ -84,7 +91,6 @@ minute = rightnow.strftime("%M")
 
 scan_datetime = f"{year}_{month}_{day}_{hour}_{minute}"
 nowoclock = rightnow.strftime("%b %d, %Y")
-run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
 
 # set ouput directories
 report_dir = 'report/'
@@ -99,6 +105,7 @@ for d in dir_list:
 df_vax = pd.DataFrame(columns=['town', 'reported_date', 'age_group', 'initiated', 'vaccinated'])
 df_cases = pd.DataFrame(columns=['town', 'date', 'total_cases', 'total_deaths'])
 df_report = pd.DataFrame(columns=['town', 'text', 'sequence'])
+df_fips = pd.DataFrame(columns=['county_name', 'fips_code', 'report_date', 'seven_day', 'positivity','level'])
 
 # Get population numbers for towns
 with open(population) as input:
@@ -111,13 +118,80 @@ for bf in batch_files:
 		df_vax = df_vax[0:0]
 		df_cases = df_cases[0:0]
 		df_report = df_report[0:0]
+		df_fips = df_fips[0:0]
 		total_population = 0
+		run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
 		data = json.load(input)
 		alltowns = data['batch_name']
 		batch_desc = data['batch_desc']
 		if len(batch_desc) > 2:
 			batch_desc = f"<p>{batch_desc}</p>"
 		town_list = data['town_list']
+		run_cdc = data['run_cdc']
+		if run_cdc == "yes":
+			fips_code = data['fips_code']
+			fcdate = []
+			county_name_list = []
+			for fc in fips_code:
+				print(f" ** Getting county-level transmission data from the CDC\n")
+				fips_url = f"https://data.cdc.gov/resource/8396-v7yb.json?fips_code={fc}&$where=report_date%20between%20'{week_prior}'%20and%20'{current}'"
+				fips_data = json.loads(requests.get(fips_url).text)
+				for fd in fips_data:
+					county_name = fd['county_name']
+					if county_name not in county_name_list:
+						county_name_list.append(county_name)
+					report_date = fd['report_date']
+					seven_day = fd['cases_per_100k_7_day_count']
+					positivity = fd['percent_test_results_reported']
+					level = fd['community_transmission_level']
+					fips_obj = pd.Series([county_name, fc, report_date, seven_day, positivity, level], index=df_fips.columns)
+					df_fips = df_fips.append(fips_obj, ignore_index=True)
+					if fd['report_date'] not in fcdate:
+						fcdate.append(fd['report_date'])
+			county_text = ""
+			x = len(county_name_list)
+			if x == 1:
+				for cnl in county_name_list:
+					county_text = county_text + cnl
+				county_text = f"{alltowns} are part of {county_text}."
+			elif x == 2:
+				count = 0
+				for cnl in county_name_list:
+					count += 1
+					if count < x:
+						county_text = county_text + cnl + " and "
+					elif count == x:
+						county_text = county_text + cnl
+					else:
+						print("Should not be possible. Examine!")
+				county_text = f"{alltowns} are part of {county_text}. "
+			elif x > 2:
+				count = 0
+				for cnl in county_name_list:
+					count += 1
+					if count < x:
+						county_text = county_text + cnl + ", "
+					elif count == x:
+						county_text = county_text + "and " + cnl
+					else:
+						print("Should not be possible. Examine!")
+				county_text = f"{alltowns} are part of {county_text}. "
+			else:
+				county_text = "No county names returned. Please review FIPS Code values."
+			fcdate.sort(reverse=True)
+			df_fips_filter = df_fips[(df_fips['report_date'] == fcdate[0])]
+			county_rep_date = fcdate[0][:10]
+			county_text = f"<p><b>{county_text}</b> County data reported on <b>{county_rep_date}</b>.</p>"
+			county_line = ""
+			for a,b in df_fips_filter.iterrows():
+				date = b['report_date']
+				county = b['county_name']
+				seven_day = b['seven_day']
+				positivity = b['positivity']
+				level = b['level']
+
+				county_line = f"<p>{county_line}{county} has a seven day rate of <b>{seven_day} cases per 100k people</b>.<ul><li>Test positivity: <b>{positivity}%</b></li><li>Community transmission level: <b>{level}</b></li></ul></p>"
+			county_text = county_text + county_line
 		run_schools = data['run_schools']
 		ifschools = data['ifschools']
 		school_intro = data['school_intro']
@@ -133,7 +207,7 @@ for bf in batch_files:
 		with open(data_intro) as di:
 			intro_text = di.read()
 		blog_source = intro_text
-		report_intro = intro_text + "<h3>Overview</h3>" + batch_desc
+		report_intro = intro_text + "<h2>1. Overview</h2>" + batch_desc
 		report_summary = ""
 		# Set link to named anchors
 		anchor_links = "<h3>Jump to detailed reports:</h3><ul>"
@@ -222,6 +296,8 @@ for bf in batch_files:
 								vaccinated_65plus = vaccinated
 							else:
 								pass
+						else:
+							pass
 						'''
 						vax_date = vax_header + "\n" + vaxline + "</table>"
 					town_case_text = town_case_text + vax_date
@@ -358,7 +434,7 @@ for bf in batch_files:
 				cases_current = day_rate + "\n" + case_rate + "\n" + cases_header + "\n" + casesline + "</table>"
 				blog_cases = blog_cases + day_rate + "\n" + case_rate
 				town_cases_text = town_cases_text + cases_current + "\n"
-				report_summary = report_summary + day_rate + "\n" + case_rate + "\n"
+				report_summary = report_summary + county_text + day_rate + "\n" + case_rate + "\n"
 				obj_report = pd.Series([t, town_cases_text, "aa"], index=df_report.columns)
 				df_report = df_report.append(obj_report, ignore_index=True)
 
@@ -406,7 +482,8 @@ for bf in batch_files:
 		## This section is largely manual - blech
 		## Read in intro text from file
 		if run_schools == "yes":
-			schools_text_header = '<h2 id="schools">Positive Cases in Schools</h2>'
+			school_num = str(len(town_list) + 2)
+			schools_text_header = f'<h2 id="schools">{school_num}. Positive Cases in Schools</h2>'
 			print(f"Processing school data.\n")
 			with open(school_intro) as f:
 				schools_text = f.read()
@@ -470,14 +547,16 @@ for bf in batch_files:
 		report_summary = report_summary + "<p>" + run_time + "</p>" + anchor_links + "\n<hr>"
 		df_report.sort_values(by=['sequence'], inplace=True)
 		all_text = ""
+		town_count = 1
 		for t in town_list:
+			town_count += 1
 			df_report_filter = df_report[df_report['town'] == t]
 			core_text = ""
 			for p,q in df_report_filter.iterrows():
 				core_text = core_text + q['text']
 			named_anchor_town = ''.join(t.split()).lower()
 			named_anchor_town = f'id="{named_anchor_town}"'
-			all_text = all_text + "<h2 " + named_anchor_town + ">" + t + "</h2>" + core_text + "<hr>"
+			all_text = all_text + "<h2 " + named_anchor_town + ">" + str(town_count) + ". " + t + "</h2>" + core_text + "<hr>"
 		doc_text = report_intro + report_summary + all_text + schools_full
 		htmlfile = output_file + "_" + scan_datetime + ".html"
 

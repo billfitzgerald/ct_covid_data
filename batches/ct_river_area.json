@@ -9,6 +9,10 @@
     "Haddam",
     "Chester"
   ],
+  "run_cdc":"yes",
+  "fips_code":[
+    "09007"
+  ],
   "detailed_report_url":"https://www.oldlymecovid.org/connecticut-river-area/",
   "pageID":"161",
   "categoryID":"9",
