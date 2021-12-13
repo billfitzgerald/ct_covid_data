@@ -10,7 +10,7 @@ import base64
 
 path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
-export_to_wordpress = "no"
+export_to_wordpress = "yes"
 
 ## External sources
 opening = "source/opening.txt"

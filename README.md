@@ -4,7 +4,11 @@ This script pulls data from the [Connecticut Open Data Portal](https://data.ct.g
 
 The script can be configured to generate reports on one or more towns; for each town, the report contains the town population, percentages of people vaccinated by age group, new positive cases, and new deaths.
 
-Optionally, the script will generate a summary blog post that can be posted automatically to any Wordpress-based site. 
+Optionally, the script will generate a summary blog post that can be posted automatically to any Wordpress-based site.
+
+This screencast gives an overview on how to use the script:
+
+<div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/656112279?h=a0eac9978e&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;" title="covid_data.mp4"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 The reports are minimal by design. If you are reading this and have an idea on details that would be helpful to add, please let me know by [opening an issue](https://github.com/billfitzgerald/ct_covid_data/issues/new).
 
@@ -18,6 +22,14 @@ To see a working site using this script:
 The script is fairly flexible. The core settings are defined in json files in the **batches** directory. The most important settings in the file are the **batch_name** and the **town_list** settings. 
 
 The **run_schools** option should be left to "no" unless you have a source of data for schools; the script offers some options for importing school data, but given the lack of standard data sources about schools, this is largely a custom process.
+
+## Importing County-level data from the CDC
+
+To provide more context around town-level data, the script now supports getting county-level data from the CDC. These data are updated daily on weekdays, and help flesh out what is happening in a geographic area.
+
+![Import CDC data](https://github.com/billfitzgerald/ct_covid_data/blob/main/county_data.png "Set the values to import CDC data")
+
+To import data from the CDC, you need to set the **run_cdc** option to "yes", and then enter the [FIPS code](https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code) (or codes) in the batches .json file.
 
 ## Setting up Export to Wordpress
 
