@@ -25,7 +25,7 @@ The **run_schools** option should be left to "no" unless you have a source of da
 
 ## Importing County-level data from the CDC
 
-To provide more context around town-level data, the script now supports getting county-level data from the CDC. These data are updated daily on weekdays, and help flesh out what is happening in a geographic area.
+To provide more context around town-level data, the script now supports getting [county-level data from the CDC](https://data.cdc.gov/Public-Health-Surveillance/United-States-COVID-19-County-Level-of-Community-T/8396-v7yb). These data are updated daily on weekdays, and help flesh out what is happening in a geographic area.
 
 ![Import CDC data](https://github.com/billfitzgerald/ct_covid_data/blob/main/images/county_data.png "Set the values to import CDC data")
 
