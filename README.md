@@ -8,7 +8,7 @@ Optionally, the script will generate a summary blog post that can be posted auto
 
 This screencast gives an overview on how to use the script:
 
-<div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/656112279?h=a0eac9978e&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;" title="covid_data.mp4"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
+[![Screencast on using the script](https://github.com/billfitzgerald/ct_covid_data/blob/main/images/screencast.gif)](https://vimeo.com/manage/videos/656112279)
 
 The reports are minimal by design. If you are reading this and have an idea on details that would be helpful to add, please let me know by [opening an issue](https://github.com/billfitzgerald/ct_covid_data/issues/new).
 
