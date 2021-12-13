@@ -43,8 +43,6 @@ If you want to export reports into Wordpress, I recommend installing the [Classi
 
 Create a user account for the author that will be publishing. In the profile of the account, set an "Application Password". This password should be entered in the **creds.ini** in the **creds** directory. You will need to create both the directory and the file, and to state the obvious this file should never be shared. This repository contains a sample creds.ini file you can adapt.
 
-TODO: create screencast that documents the script and the setup.
-
 ## Caveats and disclaimers
 
 This script works, but that is not the same as it being good. This script contains multiple hacks; I'm not a developer, and any code I write shows that very clearly. About the only good thing I can say about this code is that it works.
