@@ -27,7 +27,7 @@ The **run_schools** option should be left to "no" unless you have a source of da
 
 To provide more context around town-level data, the script now supports getting county-level data from the CDC. These data are updated daily on weekdays, and help flesh out what is happening in a geographic area.
 
-![Import CDC data](https://github.com/billfitzgerald/ct_covid_data/blob/main/county_data.png "Set the values to import CDC data")
+![Import CDC data](https://github.com/billfitzgerald/ct_covid_data/blob/main/images/county_data.png "Set the values to import CDC data")
 
 To import data from the CDC, you need to set the **run_cdc** option to "yes", and then enter the [FIPS code](https://en.wikipedia.org/wiki/Federal_Information_Processing_Standard_state_code) (or codes) in the batches .json file.
 
