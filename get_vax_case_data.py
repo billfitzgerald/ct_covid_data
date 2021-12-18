@@ -142,7 +142,10 @@ for bf in batch_files:
 						county_name_list.append(county_name)
 					report_date = fd['report_date']
 					seven_day = fd['cases_per_100k_7_day_count']
-					positivity = fd['percent_test_results_reported']
+					try:
+						positivity = fd['percent_test_results_reported']
+					except:
+						positivity = "not reported"
 					level = fd['community_transmission_level']
 					fips_obj = pd.Series([county_name, fc, report_date, seven_day, positivity, level], index=df_fips.columns)
 					df_fips = df_fips.append(fips_obj, ignore_index=True)
