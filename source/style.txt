@@ -1,4 +1,6 @@
 <style>
+b.red {color: #CC0000}
+b.blue {color: #0000CC}
 th {text-align: center;}
 td {text-align: center;}
 table, th, tr {

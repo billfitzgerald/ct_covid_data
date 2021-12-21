@@ -9,9 +9,11 @@ from configparser import ConfigParser
 import base64
 
 path_to_batches = "batches/"
-#batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
-batch_files = ['ct_river_area.json', 'lyme_oldlyme.json']
-export_to_wordpress = "no"
+batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
+add_style = "yes"
+export_html = "yes"
+export_update = "yes"
+create_blog = "yes"
 
 ## External sources
 opening = "source/opening.txt"
@@ -21,7 +23,7 @@ creds = "creds/creds_batch.ini"
 population = "source/ct_population.csv"
 
 ### Case-specific information
-case_initial = 6 # number of most recent reports to show
+case_initial = 14 # number of most recent reports to show
 # interval is measured in number of reports. In general, 5 reports come out 
 # every 7 days, so to go back 28 days enter 20
 case_interval = [10, 20, 64, 128]
@@ -76,26 +78,45 @@ def human_date(dirty_date):
 		clean_date = "Nonstandard date format"
 	return clean_date
 
+## Clean up timedeltas ##
 def clean_timedelta(td):
 	# this is brittle; it assumes 00:00:00
 	td_list = str(td).split(" 00:")
 	clean_td = td_list[0]
+	if clean_td == "1 days":
+		clean_td = "24 hours"
+	else:
+		pass
 	return clean_td
 
-def unique_list(raw_list):
-	# insert the list to the set
-	list_set = set(raw_list)
-	# convert the set to the list
-	unique_list = (list(list_set))
-	return unique_list
+## Handle language around numbers ##
+def pluralizer(number, context):
+	if context == "town_cases":
+		inc_desc = "more"
+		low_desc = "counts have been adjusted to correct past data by"
+	elif context == "hospital":
+		inc_desc = "additional"
+		low_desc = "less"
 
-def list_clean(list_items):
-	holding=[]
-	for l in list_items:
-		l_clean = str(l).split(" ")[0]
-		holding.append(l_clean)
-	return(holding)
+	if number > 0:
+		if number == 1:
+			pl_text = f'<b class="red">{number} {inc_desc} person</b> was'
+		else:
+			pl_text = f'<b class="red">{number} {inc_desc} people</b> were'
+	elif number == 0:
+		pl_text = f'there has been <b>no change</b> in the number of people'
+	elif number < 0:
+		not_neg = int(number) * -1
+		if not_neg == 1:
+			pl_text = f'<b class="blue">{not_neg} {low_desc} person</b> is'
+		else:
+			pl_text = f'<b class="blue">{not_neg} {low_desc} people</b> were'
+		
+	else:
+		pl_text = "check the numbers"
 
+	return pl_text
+		
 
 #date/time info
 rightnow = dt.datetime.today()
@@ -126,13 +147,13 @@ minute = rightnow.strftime("%M")
 scan_datetime = f"{year}_{month}_{day}_{hour}_{minute}"
 nowoclock = rightnow.strftime("%b %d, %Y")
 
+run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
+
 # vax date values - generally no need to adjust this unless you want a longer time interval
-#startdate = '2021-03-17T00:00:00'
 startdate = forty_five_prior
 enddate = current
 
 #case values - generally no need to adjust this unless you want a longer time interval
-#startcase = '2021-03-17T00:00:00'
 startcase = forty_five_prior
 endcase = current
 
@@ -268,14 +289,14 @@ for bf in batch_files:
 		output_file = data['output']
 		detailed_report_url = data['detailed_report_url']
 ## Set initial reporting language
-		title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}" # Report Title
-		blog_title = f"Daily Summary for {alltowns}" # Blog post title
+#		title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}" # Report Title
+#		blog_title = f"Daily Summary for {alltowns}" # Blog post title
 		with open(data_intro) as di:
 			intro_text = di.read()
-		blog_source = intro_text
-		report_intro = intro_text + "<h2>1. Overview</h2>" + batch_desc
+		report_intro = intro_text + "<p>" + run_time + "</p>" + "<h2>1. Overview</h2>" + batch_desc 
 		# Set link to named anchors
 		anchor_links = "<h3>Jump to detailed reports:</h3><ul>"
+		town_list = data['town_list']
 		for t in town_list:
 			named_anchor = ''.join(t.split()).lower()
 			named_anchor_vax = f'"#{named_anchor}-vaccination"'
@@ -287,18 +308,13 @@ for bf in batch_files:
 			anchor_links = anchor_links + f'</ul><a href="#schools">Positive cases in schools.</a>'
 		else:
 			anchor_links = anchor_links + "</ul>"
-		town_list = data['town_list']
 		fips_code = data['fips_code']
 		for f in fips_code:
-			print(f)
 			for key,value in county_fips_dict.items():
 				if key == f:
 					counties_report.append(value)
 				else:
 					pass
-		#print(town_list)
-		#print(fips_code)
-		#print(counties_report)
 		case_change_all = 0
 		week_change_all = 0
 		week_death_change = 0
@@ -331,13 +347,17 @@ for bf in batch_files:
 			df_case_town_filter.sort_values(by=['date'], inplace=True, ascending=False)
 			# current count
 			case_current_date = df_case_town_filter['date'].iloc[0]
+			case_one_prior_date = df_case_town_filter['date'].iloc[1]
+			time_between_reports = case_current_date - case_one_prior_date
+			tbr = clean_timedelta(time_between_reports)
 			ccd = human_date(str(case_current_date)[:10])
 			current_change = df_case_town_filter['case_change'].iloc[0]
+			c_change = pluralizer(current_change, "town_cases")
 			case_change_all = case_change_all + int(current_change)
 			current_total = df_case_town_filter['total_cases'].iloc[0]
 			yesterday_total = df_case_town_filter['total_cases'].iloc[1]
 			current_death = df_case_town_filter['total_deaths'].iloc[0]
-			town_case = f"<ul><li>On {ccd}: a change of <b>{current_change} cases</b> over 24 hours, from {yesterday_total} people to {current_total} people.</li>"
+			town_case = f"<ul><li>As of {ccd}: {c_change} positive for Covid over the last <b>{tbr}</b> (from {yesterday_total} people to {current_total} people).</li>"
 			town_case_full = town_case_full + town_title + town_case
 			town_case_summary = town_case_summary + opening_title + town_case
 
@@ -348,10 +368,11 @@ for bf in batch_files:
 			wdl = clean_timedelta(week_day_lapse)
 			week_total = df_case_town_filter['total_cases'].iloc[5]
 			week_change = int(current_total) - int(week_total)
+			w_change = pluralizer(week_change, "town_cases")
 			week_change_all = week_change_all + week_change
 			week_death = df_case_town_filter['total_deaths'].iloc[5]
 			week_death_change = week_death_change + int(week_death)
-			town_case = f"<li>In the last {wdl}: a change of <b>{week_change} cases</b>, from {week_total} people to {current_total} people.</li>"
+			town_case = f"<li>{w_change} positive for Covid over the last <b>{wdl}</b> (from {week_total} people to {current_total} people).</li>"
 			town_case_full = town_case_full + town_case
 			town_case_summary = town_case_summary + town_case
 
@@ -362,12 +383,31 @@ for bf in batch_files:
 			mdl = clean_timedelta(month_day_lapse)
 			month_total = df_case_town_filter['total_cases'].iloc[19]
 			month_change = int(current_total) - int(month_total)
+			m_change = pluralizer(month_change, "town_cases")
 			month_change_all = month_change_all + month_change
 			month_death = df_case_town_filter['total_deaths'].iloc[19]
 			month_death_change = month_death_change + int(month_death)
-			town_case = f"<li>In the last {mdl}: a change of {month_change} cases, from {month_total} people to {current_total} people.</li></ul>"
+			town_case = f"<li>{m_change} positive for Covid over the last <b>{mdl}</b> (from {month_total} people to {current_total} people).</li></ul>"
 			town_case_full = town_case_full + town_case
 			town_case_summary = town_case_summary + town_case
+			# create table going back X days
+			# get code from line 961
+			# town_case_full = town_case_full + case_table
+			named_anchor = ''.join(t.split()).lower()
+			named_anchor = f'id="{named_anchor}-cases"'
+			cases_header = f'\n<table {named_anchor}><tr class="cases"><th> Reported date </th><th> Total cases </th><th> New cases </th><th> Total deaths </th><th> New deaths </th></tr>'
+			casesline = cases_header
+			# rework this to use df_case_town_filter
+			case_rows = range(0, case_initial - 1)
+			for case_row in case_rows:
+				reported_date = str(df_case_town_filter['date'].iloc[case_row])[:10]
+				positive_cases = df_case_town_filter['total_cases'].iloc[case_row]
+				new_cases = df_case_town_filter['case_change'].iloc[case_row]
+				deaths = df_case_town_filter['total_deaths'].iloc[case_row]
+				new_deaths = df_case_town_filter['death_change'].iloc[case_row]
+				casesline = casesline + f"<tr><td>{reported_date}</td><td>{positive_cases}</td><td>{new_cases}</td><td>{deaths}</td><td>{new_deaths}</td></tr>\n"
+
+			town_case_full = town_case_full + casesline + "</table>"
 
 			#####################
 			## Get Vax Numbers ##
@@ -377,6 +417,7 @@ for bf in batch_files:
 			named_anchor_vax = ''.join(t.split()).lower()
 			named_anchor_vax = f'id="{named_anchor_vax}-vaccination"'
 			town_vax_text = f"<h3 {named_anchor_vax}>Vaccination percent by age in {t}</h3>\n"
+			town_vax_text_summary = f"<h3>Vaccination percent by age in {t}</h3>\n"
 			# get dates of all reports in the dataset
 			dates_unique = df_vax_filter.reported_date.unique()
 			for du in dates_unique:
@@ -400,20 +441,28 @@ for bf in batch_files:
 					vaxline = vaxline + f"<tr><td><strong>{age_range}</strong></td><td>{initiated}</td><td>{vaccinated}</td></tr>"
 					vax_date = vax_header + "\n" + vaxline + "</table>"
 				if vaxcount == 1:
-					town_case_summary = town_case_summary + vax_date
+					town_case_summary = town_case_summary + town_vax_text_summary + vax_date
 				else:
 					pass
 				town_vax_text = town_vax_text + vax_date
 			town_case_full = town_case_full + town_vax_text
 
-		all_town_summary = f"<h3>In {alltowns}</h3><ul>"
-		all_town_summary = all_town_summary + f"<li>24 hour change in {alltowns}: {case_change_all}</li>"
-		all_town_summary = all_town_summary + f"<li>{week_day_lapse} change in {alltowns}: {week_change_all}</li>"
-		all_town_summary = all_town_summary + f"<li>{month_day_lapse} change in {alltowns}: {month_change_all}</li>"
+		cc_all = pluralizer(case_change_all, "town_cases")
+		wc_all = pluralizer(week_change_all, "town_cases")
+		mc_all = pluralizer(month_change_all, "town_cases")
+
+
+		all_town_summary = f"<h3>In {alltowns}</h3><p>As of <b>{ccd}</b>:</p><ul>"
+		all_town_summary = all_town_summary + f"<li>{cc_all} positive for Covid over the last <b>{tbr}</b>;</li>"
+		all_town_summary = all_town_summary + f"<li>{wc_all} positive for Covid over the last <b>{wdl}</b>;</li>"
+		all_town_summary = all_town_summary + f"<li>{mc_all} positive for Covid over the last <b>{mdl}</b>.</li>"
 		all_town_summary = all_town_summary + "</ul>"
 
 		total_population = "{:,}".format(total_population)
-		summary_pop = f"{total_population} people live in <b>{alltowns}</b>."	
+		summary_pop = f"{total_population} people live in <b>{alltowns}</b>."
+
+		title = f"Covid19 Vaccination Levels and Positive Cases in {alltowns}, Current on {ccd}" # Report Title
+		blog_title = f"Daily Summary for {alltowns}, for {ccd}" # Blog post title
 
 	county_text_all = ""
 	for f in fips_code:
@@ -453,7 +502,6 @@ for bf in batch_files:
 		county_line = f"<ul><li>On {ted}, <b>{month_c} ago</b>, the seven day rate was <b>{twentyeight_seven_day} cases per 100k people</b>.</li><ul><li>Test positivity: <b>{twentyeight_positivity}%</b></li><li>Community transmission level: <b>{twentyeight_level}</b></li></ul></ul></p>"
 		county_text = county_text + county_line
 		county_text_all = county_text_all + county_text
-	print(county_text_all)
 	summary_pop = f"<p>{summary_pop} {alltowns} are part of <b>{county_name}</b>.</p>"
 
 
@@ -465,56 +513,173 @@ for bf in batch_files:
 		df_hosp_filter.sort_values(by=['date_updated'], inplace=True, ascending=False)
 		# get most recent report
 		hosp_date = df_hosp_filter['date_updated'].iloc[0]
+		gap_delta = hosp_date - df_hosp_filter['date_updated'].iloc[1]
+		gd = clean_timedelta(gap_delta)
+		h_date = human_date(str(hosp_date))
 		hd_one = df_hosp_filter['date_updated'].iloc[0]
 		hosp_total = df_hosp_filter['hosp_cases'].iloc[0]
 		hosp_new = df_hosp_filter['new_hosp'].iloc[0]
+		h_new = pluralizer(hosp_new, "hospital")
 		hosp_text = hosp_text + "<h3>Hospitalizations in " + cr + "</h3>"
-		if hosp_new > 0:
-			whn_text = f"<b>{hosp_new} additional people</b> were"
-		elif hosp_new == 0:
-			whn_text = f"there has been <b>no change</b> in the number of people"
-		else:
-			whn_count = int(hosp_new) * -1
-			whn_text = f"<b>{whn_count} fewer people</b> are"
-		hosp_text = hosp_text + f"<ul><li>In {cr}, in the <b>24 hours before</b> {hosp_date}, {whn_text} hospitalized with Covid.</li>"
+		
+		hosp_text = hosp_text + f"<ul><li>In {cr}, in the <b>{gd} before</b> {h_date}, {h_new} hospitalized with Covid.</li>"
 		
 		# get counts for the last approx 7 days
 		week_hosp_date = df_hosp_filter['date_updated'].iloc[5]
 		hd_week = df_hosp_filter['date_updated'].iloc[5]
 		week_hosp_total = df_hosp_filter['hosp_cases'].iloc[5]
 		week_hosp_new = hosp_total - week_hosp_total
-		if week_hosp_new > 0:
-			whn_text = f"<b>{week_hosp_new} additional people</b> were"
-		elif week_hosp_new == 0:
-			whn_text = f"there has been <b>no change</b> in the number of people"
-		else:
-			whn_count = int(week_hosp_new) * -1
-			whn_text = f"<b>{whn_count} fewer people</b> are"
+		w_new = pluralizer(week_hosp_new, "hospital")
 		week_change = hd_one - hd_week
 		wkc = clean_timedelta(week_change)
-		hosp_text = hosp_text + f"<li>Over the last <b>{wkc}</b>, {whn_text} hospitalized with Covid.</li>"
-		print(week_hosp_total)
-		print(week_hosp_new) # last 6 reports
+		hosp_text = hosp_text + f"<li>Over the last <b>{wkc}</b>, {w_new} hospitalized with Covid.</li>"
 
 		# get counts for approx the last 28 days
 		month_hosp_date = df_hosp_filter['date_updated'].iloc[19]
 		hd_month = df_hosp_filter['date_updated'].iloc[19]
 		month_hosp_total = df_hosp_filter['hosp_cases'].iloc[19]
 		month_hosp_new = hosp_total - month_hosp_total
+		m_new = pluralizer(month_hosp_new, "hospital")
 		month_change = hd_one - hd_month
 		mtc = clean_timedelta(month_change)
-		if month_hosp_new > 0:
-			whn_text = f"<b>{month_hosp_new} additional people</b> were"
-		elif month_hosp_new == 0:
-			whn_text = f"there has been <b>no change</b> in the number of people"
-		else:
-			whn_count = int(month_hosp_new) * -1
-			whn_text = f"<b>{whn_count} fewer people</b> are"
-		hosp_text = hosp_text + f"<li>Over the last <b>{mtc[0]}</b>, {whn_text} hospitalized with Covid.</li></ul>"
+		hosp_text = hosp_text + f"<li>Over the last <b>{mtc}</b>, {m_new} hospitalized with Covid.</li></ul>"
 			
-		print(hosp_text)
-	report_intro = report_intro + summary_pop + all_town_summary + county_text_all + hosp_text + town_case_summary
-	print(report_intro)
+	## Schools
+	## This section is largely manual - blech
+	## Read in intro text from file
+	if run_schools == "yes":
+		school_num = str(len(town_list) + 2)
+		schools_text_header = f'<h2 id="schools">{school_num}. Positive Cases in Schools</h2>'
+		print(f"Processing school data.\n")
+		with open(school_intro) as f:
+			schools_text = f.read()
+
+		with open(school_cases) as input:
+			df_school_data = pd.read_csv(input)
+
+		school_case_header = f'\n<table><tr class="cases"><th> Reported Date </th><th> Cases </th><th> School </th><th> Notes or Explanations </th></tr>'
+		school_case_count = 0
+		school_count_interval = 0
+		for r, s in df_school_data.iterrows():
+			school_date = s['date']
+			cases = s['cases']
+			school_case_count = school_case_count + int(cases)
+			fourteen_dl_raw = [case_current_date - dt.timedelta(days=x) for x in range(14)]
+			fourteen_dl_raw = set(fourteen_dl_raw)
+			fourteen_dl_raw = (list(fourteen_dl_raw))
+			fourteen_dl_raw.sort(reverse=True)
+			clean_string_fourteen_dl = []
+			for l in fourteen_dl_raw:
+				l_clean = str(l).split(" ")[0]
+				clean_string_fourteen_dl.append(l_clean)
+			if school_date in clean_string_fourteen_dl:
+				school_count_interval = school_count_interval + int(cases)
+			else:
+				pass
+			school = s['school']
+			notes = s['notes']
+			if notes == "none":
+				notes = ""
+			else:
+				pass
+			school_line = f"<tr><td>{school_date}</td><td>{cases}</td><td>{school}</td><td>{notes}</td></tr>"
+			school_case_header = school_case_header + school_line
+		# data prep for human-friendly versions
+		sdb = datetime.strptime(clean_string_fourteen_dl[0], '%Y-%m-%d')
+		sd_begin = sdb.strftime("%b %d, %Y")
+		sde = datetime.strptime(clean_string_fourteen_dl[-1], '%Y-%m-%d')
+		sd_end = sde.strftime("%b %d, %Y")
+		school_case_interval = f"<p>In the <b>{len(clean_string_fourteen_dl)} days</b> between {sd_begin} and {sd_end}, Lyme-Old Lyme Regional School District 18 has disclosed knowledge of <b>{school_count_interval} people</b> in the schools with Covid.</p>"
+		school_cases_text = f'<p>As of {sd_begin}, the district superintendent has disclosed that <b>{str(school_case_count)} people in Lyme-Old Lyme Schools</b> have tested positive for Covid in the 2021-2022 school year.</p>'
+		schools_full = schools_text_header + school_case_interval + school_cases_text + schools_text + school_case_header + "</table>"
+	else:
+		schools_full = ""
+		school_case_interval = ""
+## Finalize reports
+	report_full = report_intro + summary_pop + all_town_summary + school_case_interval + county_text_all + hosp_text + anchor_links + town_case_full + schools_full
+	report_intro = report_intro + summary_pop + all_town_summary + school_case_interval + county_text_all + hosp_text + town_case_summary
+	
+	if export_html == "yes":
+		report_full_html = "<h2>" + title + "</h2>" + report_full
+		report_intro_html = "<h2>" + blog_title + "</h2>" + report_intro
+		if add_style == "yes":
+			with open(style_declaration) as f:
+				style = f.read()
+				report_intro_html = style + report_intro_html
+				report_full_html = style + report_full_html
+		else:
+			pass
+		htmlfile = output_file + "_" + scan_datetime + ".html"
+		with open(report_dir + htmlfile, 'w') as g:
+			g.write(report_full_html)
+
+		introfile = output_file + "_blog_" + scan_datetime + ".html"
+		with open(report_dir + introfile, 'w') as g:
+			g.write(report_intro_html)
+	else:
+		pass
+## Update detailed report page
+	if export_update == "yes":
+		print(f" ** Updating the site. This might take a minute.")
+
+		credentials = user + ':' + password
+		token = base64.b64encode(credentials.encode())
+		header = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+		if add_style == "yes":
+			with open(style_declaration) as f:
+				style = f.read()
+				report_full = style + report_full
+		else:
+			pass
+
+		## update the page
+		page = {
+			'title':title,
+			'content':report_full
+		}
+		response_page = requests.post(url_page + pageID , headers=header, json=page)
+
+		# post summary blog
+		if str(response_page) == "<Response [200]>":
+			print(f" ** The page titled '{title}' updated sucessfully,\n")
+		else: 
+			print(f"There seems to be an issue with the update. This was the response code:\n{response}")
+	else:
+		pass
+## Create blog posy
+	if create_blog == "yes":
+		print(f" ** Creating a blog post. This might take a minute.")
+		read_full_report = f'<p>For more background information, see the <a href="{detailed_report_url}" title="Full report of current data on Covid cases and vaccinations">detailed report of current information</a>.</p>'
+
+		credentials = user + ':' + password
+		token = base64.b64encode(credentials.encode())
+		header = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+		if add_style == "yes":
+			with open(style_declaration) as f:
+				style = f.read()
+				report_intro = style + read_full_report + report_intro
+		else:
+			pass
+
+		post = {
+			'title':blog_title,
+			'status': 'publish', 
+			'content': report_intro,
+			'categories':category,
+			'author':post_author
+			}
+
+		response_post = requests.post(url_post, headers=header, json=post)
+		if str(response_post) == "<Response [201]>":
+			print(f"** The blog post titled '{blog_title}' was created.\n")
+		else: 
+			print(f"There seems to be an issue with creating the post. This was the response code:\n{response_post}")
+	else:
+		pass
+
+#	print(report_full)
 
 #df_cases.sort_values(by=['date'], inplace=True, ascending=False)
 #df_vax.sort_values(by=['reported_date'], inplace=True, ascending=False)
@@ -526,14 +691,6 @@ for bf in batch_files:
 #df_fips.to_csv('all_fips.csv', encoding='utf-8', index=False)
 #df_hospital.to_csv('all_hospital.csv', encoding='utf-8', index=False)
 
-#print(df_cases.dtypes)
-#print(df_vax.dtypes)
-#print(df_fips.dtypes)
-#print(df_hospital.dtypes)
-
-
-#print(towns_for_query)
-#print(fips_for_query)
 '''
 ### all old logic below here
 		df_vax = df_vax[0:0]
