@@ -10,7 +10,7 @@ import base64
 
 path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
-export_to_wordpress = "yes"
+export_to_wordpress = "no"
 
 ## External sources
 opening = "source/opening.txt"
@@ -44,8 +44,28 @@ url_post = creds["url_post"]
 user = creds["username"]
 password = creds["password"]
 
+df_vax = pd.DataFrame(columns=['town', 'reported_date', 'age_group', 'initiated', 'vaccinated'])
+df_cases = pd.DataFrame(columns=['town', 'date', 'total_cases', 'case_change', 'total_deaths', 'death_change'])
+df_ca_tmp = pd.DataFrame(columns=['town', 'date', 'total_cases', 'case_change', 'total_deaths', 'death_change'])
+df_report = pd.DataFrame(columns=['town', 'text', 'sequence'])
+df_fips = pd.DataFrame(columns=['county_name', 'fips_code', 'report_date', 'seven_day', 'positivity','level'])
+df_hospital = pd.DataFrame(columns=['county_name', 'date_updated', 'hosp_cases', 'new_hosp'])
+df_hosp = pd.DataFrame(columns=['county_name', 'date_updated', 'hosp_cases', 'new_hosp'])
+
 ## Functions      ##
 ## Clean up dates ##
+def human_date(dirty_date):
+	if len(str(dirty_date)) > 10:
+		dirty_date = dirty_date[:10]
+	else:
+		pass
+	try:
+		clean_date = datetime.strptime(dirty_date, '%Y-%m-%d')
+		clean_date = clean_date.strftime("%b %d, %Y")
+	except:
+		clean_date = "Nonstandard date format"
+	return clean_date
+
 def unique_list(raw_list):
 	# insert the list to the set
 	list_set = set(raw_list)
@@ -60,10 +80,18 @@ def list_clean(list_items):
 		holding.append(l_clean)
 	return(holding)
 
+def hosp_collect(cnl, prior, current):	
+	cnl_call = cnl.replace(" County", "")
+	hosp_url = f"https://data.ct.gov/resource/bfnu-rgqt.json?county={cnl_call}&$where=dateupdated%20between%20'{prior}'%20and%20'{current}'"
+	hosp_data = json.loads(requests.get(hosp_url).text)
+	return hosp_data
+
+
 #date/time info
 rightnow = dt.datetime.today()
 starttime = rightnow + dt.timedelta(days=1)
 week_away = rightnow + dt.timedelta(days=-7)
+forty_five = rightnow + dt.timedelta(days=-45)
 sy = starttime.strftime("%Y")
 sm = starttime.strftime("%m")
 sd = starttime.strftime("%d")
@@ -73,6 +101,11 @@ way = week_away.strftime("%Y")
 wam = week_away.strftime("%m")
 wad = week_away.strftime("%d")
 week_prior = f"{way}-{wam}-{wad}T00:00:00"
+
+ffay = forty_five.strftime("%Y")
+ffam = forty_five.strftime("%m")
+ffad = forty_five.strftime("%d")
+forty_five_prior = f"{ffay}-{ffam}-{ffad}T00:00:00"
 
 
 # vax date values - generally no need to adjust this unless you want a longer time interval
@@ -102,11 +135,6 @@ for d in dir_list:
 	except FileExistsError:
 		pass
 
-df_vax = pd.DataFrame(columns=['town', 'reported_date', 'age_group', 'initiated', 'vaccinated'])
-df_cases = pd.DataFrame(columns=['town', 'date', 'total_cases', 'total_deaths'])
-df_report = pd.DataFrame(columns=['town', 'text', 'sequence'])
-df_fips = pd.DataFrame(columns=['county_name', 'fips_code', 'report_date', 'seven_day', 'positivity','level'])
-
 # Get population numbers for towns
 with open(population) as input:
 	df_population = pd.read_csv(input)
@@ -119,6 +147,7 @@ for bf in batch_files:
 		df_cases = df_cases[0:0]
 		df_report = df_report[0:0]
 		df_fips = df_fips[0:0]
+		df_hospital = df_hospital[0:0]
 		total_population = 0
 		run_time = f"This report was generated on {nowoclock} at {hour}:{minute}. "
 		data = json.load(input)
@@ -155,11 +184,38 @@ for bf in batch_files:
 			x = len(county_name_list)
 			if x == 1:
 				for cnl in county_name_list:
+					hospital_data = hosp_collect(cnl, forty_five_prior, current)
+					df_hosp = df_hosp[0:0]
+					for hd in hospital_data:
+						county_name = cnl
+						date_updated = hd['dateupdated']
+						hosp_cases = int(hd['hospitalization'])
+						new_hosp = 0
+						hosp_list = []
+						hosp_obj = pd.Series([county_name, date_updated, hosp_cases, new_hosp], index=df_hosp.columns)
+						df_hosp = df_hosp.append(hosp_obj, ignore_index=True)
+					difference = df_hosp['hosp_cases'].diff()
+					df_hosp['new_hosp'] = difference
+					df_hospital = df_hospital.append(df_hosp)
 					county_text = county_text + cnl
 				county_text = f"{alltowns} are part of {county_text}."
 			elif x == 2:
 				count = 0
 				for cnl in county_name_list:
+					hospital_data = hosp_collect(cnl, forty_five_prior, current)
+					df_hosp = df_hosp[0:0]
+					for hd in hospital_data:
+						county_name = cnl
+						date_updated = hd['dateupdated']
+						hosp_cases = int(hd['hospitalization'])
+						new_hosp = 0
+						hosp_list = []
+						hosp_obj = pd.Series([county_name, date_updated, hosp_cases, new_hosp], index=df_hosp.columns)
+						df_hosp = df_hosp.append(hosp_obj, ignore_index=True)
+
+					difference = df_hosp['hosp_cases'].diff()
+					df_hosp['new_hosp'] = difference
+					df_hospital = df_hospital.append(df_hosp)
 					count += 1
 					if count < x:
 						county_text = county_text + cnl + " and "
@@ -171,6 +227,19 @@ for bf in batch_files:
 			elif x > 2:
 				count = 0
 				for cnl in county_name_list:
+					hospital_data = hosp_collect(cnl, forty_five_prior, current)
+					df_hosp = df_hosp[0:0]
+					for hd in hospital_data:
+						county_name = cnl
+						date_updated = hd['dateupdated']
+						hosp_cases = int(hd['hospitalization'])
+						new_hosp = 0
+						hosp_list = []
+						hosp_obj = pd.Series([county_name, date_updated, hosp_cases, new_hosp], index=df_hosp.columns)
+						df_hosp = df_hosp.append(hosp_obj, ignore_index=True)
+					difference = df_hosp['hosp_cases'].diff()
+					df_hosp['new_hosp'] = difference
+					df_hospital = df_hospital.append(df_hosp)
 					count += 1
 					if count < x:
 						county_text = county_text + cnl + ", "
@@ -181,6 +250,71 @@ for bf in batch_files:
 				county_text = f"{alltowns} are part of {county_text}. "
 			else:
 				county_text = "No county names returned. Please review FIPS Code values."
+			df_hospital.sort_values(by=['date_updated'], inplace=True, ascending=False)
+			county_list = df_hospital.county_name.unique()
+			print(county_list)
+			hosp_text = ""
+			for cl in county_list:
+				# Filter by county
+				df_hosp_filter = df_hospital[df_hospital['county_name'] == cl]
+
+				# get most recent report
+				hosp_date = human_date(df_hosp_filter['date_updated'].iloc[0])
+				hd_one = datetime.strptime(df_hosp_filter['date_updated'].iloc[0][:10], '%Y-%m-%d')
+				hosp_total = df_hosp_filter['hosp_cases'].iloc[0]
+				hosp_new = df_hosp_filter['new_hosp'].iloc[0]
+				print(cl)
+				print(hosp_date)
+				print(hosp_total)
+				print(hosp_new) # last 24 hours
+				if hosp_new > 0:
+					whn_text = f"<b>{hosp_new} additional people</b> were"
+				elif hosp_new == 0:
+					whn_text = f"there has been <b>no change</b> in the number of people"
+				else:
+					whn_count = int(hosp_new) * -1
+					whn_text = f"<b>{whn_count} fewer people</b> are"
+				hosp_text = hosp_text + f"<p>In {cl}, on {hosp_date}, {whn_text} hospitalized with Covid over the last 24 hours. "
+				
+				# get counts for the last approx 7 days
+				week_hosp_date = human_date(df_hosp_filter['date_updated'].iloc[5])
+				hd_week = datetime.strptime(df_hosp_filter['date_updated'].iloc[5][:10], '%Y-%m-%d')
+				week_hosp_total = df_hosp_filter['hosp_cases'].iloc[5]
+				week_hosp_new = hosp_total - week_hosp_total
+				if week_hosp_new > 0:
+					whn_text = f"<b>{week_hosp_new} additional people</b> were"
+				elif week_hosp_new == 0:
+					whn_text = f"there has been <b>no change</b> in the number of people"
+				else:
+					whn_count = int(week_hosp_new) * -1
+					whn_text = f"<b>{whn_count} fewer people</b> are"
+				week_change = hd_one - hd_week
+				wkc = str(week_change).split(',')
+				hosp_text = hosp_text + f"Over the last {wkc[0]}, {whn_text} hospitalized with Covid. "
+				print(week_hosp_total)
+				print(week_hosp_new) # last 6 reports
+
+				# get counts for approx the last 28 days
+				month_hosp_date = df_hosp_filter['date_updated'].iloc[19]
+				hd_month = datetime.strptime(df_hosp_filter['date_updated'].iloc[19][:10], '%Y-%m-%d')
+				month_hosp_total = df_hosp_filter['hosp_cases'].iloc[19]
+				month_hosp_new = hosp_total - month_hosp_total
+				month_change = hd_one - hd_month
+				mtc = str(month_change).split(',')
+				print(month_hosp_total)
+				print(month_hosp_new) #last 27 reports
+				if month_hosp_new > 0:
+					whn_text = f"<b>{month_hosp_new} additional people</b> were"
+				elif month_hosp_new == 0:
+					whn_text = f"there has been <b>no change</b> in the number of people"
+				else:
+					whn_count = int(month_hosp_new) * -1
+					whn_text = f"<b>{whn_count} fewer people</b> are"
+				hosp_text = hosp_text + f"Over the last {mtc[0]}, {whn_text} hospitalized with Covid.</p>"
+				
+				print(hosp_text)
+			# In X County, on X date, X people are hospitalized with Covid. This is an increase/decrease of X since DATE.
+
 			fcdate.sort(reverse=True)
 			df_fips_filter = df_fips[(df_fips['report_date'] == fcdate[0])]
 			county_rep_date = fcdate[0][:10]
@@ -325,6 +459,7 @@ for bf in batch_files:
 			endcase_str = endcase[:10]
 			case_calcdate = datetime.strptime(endcase_str, '%Y-%m-%d')
 			for t in town_list:
+				df_ca_tmp = df_ca_tmp[0:0]
 				print(f"   - Getting case and death rate data for {t}\n")
 				case_url = f"https://data.ct.gov/resource/28fr-iqnx.json?town={t}&$where=lastupdatedate between '{startcase}' and '{endcase}'"
 				case_data = json.loads(requests.get(case_url).text)
@@ -333,11 +468,19 @@ for bf in batch_files:
 				for c in case_data:
 					town = c['town']
 					date = c['lastupdatedate'][:10]
-					total_cases = c['towntotalcases']
-					total_deaths = c['towntotaldeaths']
-					case_obj = pd.Series([town, date, total_cases, total_deaths], index=df_cases.columns)
-					df_cases = df_cases.append(case_obj, ignore_index=True)
-
+					total_cases = int(c['towntotalcases'])
+					case_change = 0
+					total_deaths = int(c['towntotaldeaths'])
+					death_change = 0
+					case_obj = pd.Series([town, date, total_cases, case_change, total_deaths, death_change], index=df_ca_tmp.columns)
+					df_ca_tmp = df_ca_tmp.append(case_obj, ignore_index=True)
+				case_difference = df_ca_tmp['total_cases'].diff()
+				death_difference = df_ca_tmp['total_deaths'].diff()
+				print(difference)
+				df_ca_tmp['case_change'] = case_difference
+				df_ca_tmp['death_change'] = death_difference
+				df_cases = df_cases.append(df_ca_tmp)
+			print(df_cases)
 		# filter dataset by town and get counts
 			blog_cases = ""
 			one_count = 0
@@ -378,7 +521,7 @@ for bf in batch_files:
 				difference = str((startd - endd)).split(',')
 				named_anchor = ''.join(t.split()).lower()
 				named_anchor = f'id="{named_anchor}-cases"'
-				cases_header = f'\n<table {named_anchor}><tr class="cases"><th> Reported date </th><th> Total cases </th><th> Total deaths </th></tr>'
+				cases_header = f'\n<table {named_anchor}><tr class="cases"><th> Reported date </th><th> Total cases </th><th> New cases </th><th> Total deaths </th><th> New deaths </th></tr>'
 				casesline = ""
 				for c in case_report_date_list:
 					datefilter = str(c)[:10]
@@ -387,8 +530,10 @@ for bf in batch_files:
 						reporting_town = d['town']
 						reported_date = d['date']
 						positive_cases = d['total_cases']
+						new_cases = d['case_change']
 						deaths = d['total_deaths']
-						casesline = casesline + f"<tr><td>{reported_date}</td><td>{positive_cases}</td><td>{deaths}</td></tr>\n"
+						new_deaths = d['death_change']
+						casesline = casesline + f"<tr><td>{reported_date}</td><td>{positive_cases}</td><td>{new_cases}</td><td>{deaths}</td><td>{new_deaths}</td></tr>\n"
 						if datefilter == str(case_report_date_list[0])[:10]:
 							base_cases = positive_cases
 							base_deaths = deaths
