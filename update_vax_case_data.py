@@ -12,8 +12,10 @@ path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
 add_style = "yes"
 export_html = "yes"
-export_update = "yes"
-create_blog = "yes"
+update_detailed_report = "no"
+update_summary = "yes"
+create_blog = "no"
+
 
 ## External sources
 opening = "source/opening.txt"
@@ -284,6 +286,7 @@ for bf in batch_files:
 		school_intro = data['school_intro']
 		school_cases = data['school_cases']
 		pageID = data['pageID']
+		pageID_summary = data['pageID_summary']
 		category = data['categoryID']
 		post_author = data['post_author']
 		output_file = data['output']
@@ -619,8 +622,8 @@ for bf in batch_files:
 	else:
 		pass
 ## Update detailed report page
-	if export_update == "yes":
-		print(f" ** Updating the site. This might take a minute.")
+	if update_detailed_report == "yes":
+		print(f" ** Updating the detailed report. This might take a minute.")
 
 		credentials = user + ':' + password
 		token = base64.b64encode(credentials.encode())
@@ -639,6 +642,35 @@ for bf in batch_files:
 			'content':report_full
 		}
 		response_page = requests.post(url_page + pageID , headers=header, json=page)
+
+		# post summary blog
+		if str(response_page) == "<Response [200]>":
+			print(f" ** The page titled '{title}' updated sucessfully,\n")
+		else: 
+			print(f"There seems to be an issue with the update. This was the response code:\n{response}")
+	else:
+		pass
+## Update summary report page
+	if update_summary == "yes":
+		print(f" ** Updating the summary report. This might take a minute.")
+
+		credentials = user + ':' + password
+		token = base64.b64encode(credentials.encode())
+		header = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+		if add_style == "yes":
+			with open(style_declaration) as f:
+				style = f.read()
+				report_intro = style + report_intro
+		else:
+			pass
+
+		## update the page
+		page = {
+			'title':blog_title, 
+			'content': report_intro
+			}
+		response_page = requests.post(url_page + pageID_summary , headers=header, json=page)
 
 		# post summary blog
 		if str(response_page) == "<Response [200]>":
