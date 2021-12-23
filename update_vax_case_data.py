@@ -7,14 +7,25 @@ import datetime as dt
 from datetime import datetime
 from configparser import ConfigParser
 import base64
+import plotly.express as px
+import plotly.graph_objs as go
+
+## TODO 
+## create a graphs page:
+## cases for the region
+## community transmission rates
+## hospitalization rates
+## post them to a new page
+## link to detailed report
 
 path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
 add_style = "yes"
 export_html = "yes"
 update_detailed_report = "no"
-update_summary = "yes"
+update_summary = "no"
 create_blog = "no"
+upload_media = "yes"
 
 
 ## External sources
@@ -34,12 +45,13 @@ vax_initial = 3 # number of most recent vax level reports to show
 
 # set ouput directories
 report_dir = 'report/'
+graph_dir = 'graphs/'
 
 ###########################################
 # Use care if adjusting values below here #
 ###########################################
 
-dir_list = [report_dir]
+dir_list = [report_dir, graph_dir]
 for d in dir_list:
 	try:
 		os.makedirs(d)
@@ -53,6 +65,7 @@ config.read(creds)
 creds = config["WORDPRESS"]
 url_page = creds["url_page"]
 url_post = creds["url_post"]
+url_media = creds["url_media"]
 user = creds["username"]
 password = creds["password"]
 
@@ -119,12 +132,24 @@ def pluralizer(number, context):
 
 	return pl_text
 		
+def header_wp(user, password, filename):
+	credentials = user + ':' + password
+	token = base64.b64encode(credentials.encode())
+	header_json = {
+					'Authorization': 'Basic ' + token.decode('utf-8')
+					}
+	return header_json
+
+def upload_image_to_wp(media, url, header_json):
+	response = requests.post(url, headers = header_json, files = media)
+	return response
 
 #date/time info
 rightnow = dt.datetime.today()
 starttime = rightnow + dt.timedelta(days=1)
 week_away = rightnow + dt.timedelta(days=-7)
 forty_five = rightnow + dt.timedelta(days=-45)
+ninety = rightnow + dt.timedelta(days=-90)
 sy = starttime.strftime("%Y")
 sm = starttime.strftime("%m")
 sd = starttime.strftime("%d")
@@ -139,6 +164,11 @@ ffay = forty_five.strftime("%Y")
 ffam = forty_five.strftime("%m")
 ffad = forty_five.strftime("%d")
 forty_five_prior = f"{ffay}-{ffam}-{ffad}T00:00:00"
+
+nyay = ninety.strftime("%Y")
+nyam = ninety.strftime("%m")
+nyad = ninety.strftime("%d")
+ninety_prior = f"{nyay}-{nyam}-{nyad}T00:00:00"
 
 year = rightnow.strftime("%Y")
 month = rightnow.strftime("%m")
@@ -158,7 +188,6 @@ enddate = current
 #case values - generally no need to adjust this unless you want a longer time interval
 startcase = forty_five_prior
 endcase = current
-
 
 # Get population numbers for towns
 with open(population) as input:
@@ -224,7 +253,7 @@ county_name_list = []
 county_fips_dict = {}
 for f in fips_for_query:
 	print(f" ** Getting county-level transmission data from the CDC for {f}\n")
-	fips_url = f"https://data.cdc.gov/resource/8396-v7yb.json?fips_code={f}&$where=report_date%20between%20'{forty_five_prior}'%20and%20'{current}'"
+	fips_url = f"https://data.cdc.gov/resource/8396-v7yb.json?fips_code={f}&$where=report_date%20between%20'{ninety_prior}'%20and%20'{current}'"
 	fips_data = json.loads(requests.get(fips_url).text)
 	for fd in fips_data:
 		county_name = fd['county_name']
@@ -246,7 +275,7 @@ for f in fips_for_query:
 for c in county_name_list:
 	print(f" ** Getting county-level hospitalization data for {c}\n")
 	cnl_call = c.replace(" County", "")
-	hosp_url = f"https://data.ct.gov/resource/bfnu-rgqt.json?county={cnl_call}&$where=dateupdated%20between%20'{forty_five_prior}'%20and%20'{current}'"
+	hosp_url = f"https://data.ct.gov/resource/bfnu-rgqt.json?county={cnl_call}&$where=dateupdated%20between%20'{ninety_prior}'%20and%20'{current}'"
 	hospital_data = json.loads(requests.get(hosp_url).text)
 	df_hosp = df_hosp[0:0]
 	for hd in hospital_data:
@@ -266,9 +295,11 @@ df_vax['reported_date'] = pd.to_datetime(df_vax['reported_date'])
 df_fips['report_date'] = pd.to_datetime(df_fips['report_date'])
 df_hospital['date_updated'] = pd.to_datetime(df_hospital['date_updated'])
 
+all_graph_list = []
 for bf in batch_files:
 	fn = path_to_batches + bf
 	with open(fn) as input:
+		selected_graphs = []
 		report_opening = ""
 		blog_post = ""
 		full_report = ""
@@ -505,6 +536,62 @@ for bf in batch_files:
 		county_line = f"<ul><li>On {ted}, <b>{month_c} ago</b>, the seven day rate was <b>{twentyeight_seven_day} cases per 100k people</b>.</li><ul><li>Test positivity: <b>{twentyeight_positivity}%</b></li><li>Community transmission level: <b>{twentyeight_level}</b></li></ul></ul></p>"
 		county_text = county_text + county_line
 		county_text_all = county_text_all + county_text
+		## Graph for Community Transmission Rate
+		fig = go.Figure(data=go.Scatter(x=df_fips_filter['report_date'].astype(dtype=str), y=df_fips_filter['seven_day'].astype(dtype=float), marker_color='indianred', text="cases"))
+
+		graph_title = f'Seven day Community Transmission in {county_name}'
+		fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"Total new COVID-19 cases per 100,000 persons in the last 7 days"}, "showlegend": False})
+		countyfile = ''.join(county_name.split()).lower()
+		cfname = scan_datetime + "_" + countyfile + "_trans.png"
+		trans_graph = graph_dir + cfname
+		fig.write_image(trans_graph,format="png", width=1000, height=600, scale=3)
+		if upload_media == "yes": #change this to OR statement after testing
+			if cfname not in all_graph_list:
+				all_graph_list.append(cfname)
+
+				print(f" ** Uploading graphs to the site. This might take a minute.")
+
+				header = header_wp(user, password, cfname)
+				
+				media = {
+						'file': open(trans_graph,"rb")
+						}
+				response_media = upload_image_to_wp(media, url_media, header)
+				# media response
+				resp_json = response_media.json()
+				postid = resp_json['id']
+				#print(f"\nPOSTID: {postid}\n")
+				media_update = {
+					'caption': 'Hospitalization data from https://data.ct.gov/resource/bfnu-rgqt', 
+					'title': graph_title,
+					'author': post_author,
+					'description': 'I am a description',
+					'alt_text': 'This is alt text'
+	        		}
+				r_update = requests.post(url_media + str(postid), headers=header, json=media_update)
+				r_update = r_update.json()
+				for r in r_update:
+					#print (r)
+					if r == "media_details":
+						print(r_update[r]['file'])
+						print(r_update[r]['sizes']['medium']['source_url'])
+						print(r_update[r]['sizes']['medium']['width'])
+						for im in (r_update[r]['sizes']['medium']).items():
+							print(im)
+						#print(r_update[r]['sizes']['full'])
+						#for d in r_update[r]:
+						#	print(d)
+					else:
+						pass
+					#print(resp_json[r])
+			else:
+				pass
+
+		else:
+			pass
+
+		
+
 	summary_pop = f"<p>{summary_pop} {alltowns} are part of <b>{county_name}</b>.</p>"
 
 
@@ -546,6 +633,19 @@ for bf in batch_files:
 		month_change = hd_one - hd_month
 		mtc = clean_timedelta(month_change)
 		hosp_text = hosp_text + f"<li>Over the last <b>{mtc}</b>, {m_new} hospitalized with Covid (from {month_hosp_total} to {hosp_total} people).</li></ul>"
+		# Hospital graph - Date and cases, per county
+		# Date is x axis
+		# Cases is y axis
+		# County is title
+		# https://stackoverflow.com/questions/43915184/how-to-upload-images-using-wordpress-rest-api-in-python
+		# https://medium.com/nerd-for-tech/how-to-plot-timeseries-data-in-python-and-plotly-1382d205cc2
+		fig = go.Figure(data=go.Scatter(x=df_hosp_filter['date_updated'].astype(dtype=str), y=df_hosp_filter['hosp_cases'].astype(dtype=int), marker_color='indianred', text="cases"))
+
+		fig.update_layout({"title": f'Hospitalizations in {cr}', "xaxis": {"title":"Date"},"yaxis": {"title":"People hospitalized with Covid"}, "showlegend": False})
+		crfile = ''.join(cr.split()).lower()
+		hosp_graph = graph_dir + scan_datetime + "_" + crfile + "_hosp.png"
+		fig.write_image(hosp_graph, width=1000, height=600, scale=3)
+		#fig.show()
 			
 	## Schools
 	## This section is largely manual - blech
@@ -650,6 +750,31 @@ for bf in batch_files:
 			print(f"There seems to be an issue with the update. This was the response code:\n{response}")
 	else:
 		pass
+## Upload media
+	'''
+	if upload_media == "yes": #change this to OR statement after testing
+		print(f" ** Uploading graphs to the site. This might take a minute.")
+
+		credentials = user + ':' + password
+		token = base64.b64encode(credentials.encode())
+		header = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+		## update the page
+		media = {
+			'title':blog_title, 
+			'alt_text':,
+			'caption':,
+			'description':,
+			'media_type':,
+			'source_url':
+			}
+		response_media = requests.post(url_media, headers=header, json=media)
+
+		# media response
+		print(response_media)
+	else:
+		pass
+	'''
 ## Update summary report page
 	if update_summary == "yes":
 		print(f" ** Updating the summary report. This might take a minute.")
