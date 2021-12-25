@@ -2,6 +2,7 @@ from pprint import pprint
 import json
 import requests 
 import pandas as pd
+import numpy as np
 import os
 import datetime as dt
 from datetime import datetime
@@ -22,8 +23,8 @@ path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
 add_style = "yes"
 export_html = "yes"
-update_detailed_report = "no"
-update_summary = "no"
+update_detailed_report = "yes"
+update_summary = "yes"
 create_blog = "no"
 upload_media = "yes"
 
@@ -144,6 +145,23 @@ def upload_image_to_wp(media, url, header_json):
 	response = requests.post(url, headers = header_json, files = media)
 	return response
 
+def img_code_generate(data, postid, alt_text, caption):
+	display_img = data['sizes']['medium']['source_url']
+	display_width = data['sizes']['medium']['width']
+	full_size_img = data['sizes']['full']['source_url']
+	img_code = f'[caption id="attachment_{postid}" align="aligncenter" width="{display_width}"]<a href="{full_size_img}"><img src="{display_img}" alt="{alt_text}" width="{display_width}" /></a>{caption}[/caption]'
+	return img_code						
+
+def figure_caption(full_image, alt, width, caption):
+	'''
+	TODO
+	<figure>
+  		<a href="full_image"><img src="path_to_image" alt="alt_text" style="width:600">
+  		<figcaption>caption</figcaption>
+	</figure>
+	'''
+	pass
+
 #date/time info
 rightnow = dt.datetime.today()
 starttime = rightnow + dt.timedelta(days=1)
@@ -186,9 +204,10 @@ startdate = forty_five_prior
 enddate = current
 
 #case values - generally no need to adjust this unless you want a longer time interval
-startcase = forty_five_prior
+startcase = ninety_prior
 endcase = current
 
+graphs_dict = {}
 # Get population numbers for towns
 with open(population) as input:
 	df_population = pd.read_csv(input)
@@ -379,6 +398,8 @@ for bf in batch_files:
 			######################
 			df_case_town_filter = df_cases[df_cases['town'] == t]
 			df_case_town_filter.sort_values(by=['date'], inplace=True, ascending=False)
+			df_all_towns = df_cases[df_cases['town'].isin(town_list)]
+			df_all_towns.sort_values(by=['date'], inplace=True, ascending=False)
 			# current count
 			case_current_date = df_case_town_filter['date'].iloc[0]
 			case_one_prior_date = df_case_town_filter['date'].iloc[1]
@@ -443,6 +464,62 @@ for bf in batch_files:
 
 			town_case_full = town_case_full + casesline + "</table>"
 
+			## Generate graph for town numbers
+			df_at_len = df_all_towns.shape[0] - 1
+			earliest_date = df_all_towns['date'].iloc[df_at_len]
+			at_ed = human_date(str(earliest_date)[:10])
+			grouped = df_all_towns.groupby('date')		
+			df_graph_cases = pd.DataFrame(grouped['total_cases'].agg([np.sum]))
+
+			## Graph for Community Transmission Rate
+			fig = go.Figure(data=go.Scatter(x=df_graph_cases.index.astype(dtype=str), y=df_graph_cases['sum'].astype(dtype=int), marker_color='indianred', text="cases"))
+			#fig = go.Figure(data=go.Scatter(x=grouped['date'], y=grouped['total_cases'].agg([np.sum]), marker_color='indianred', text="cases"))
+			graph_title = f'People with Covid19 in {alltowns} from {at_ed} to {ccd}'
+			fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"People with Positive Cases of Covid19"}, "showlegend": False})
+			townfile = ''.join(alltowns.split()).lower()
+			tfname = scan_datetime + "_" + townfile + "_cases.png"
+			cases_graph = graph_dir + tfname
+			fig.write_image(cases_graph,format="png", width=1000, height=600, scale=3)
+			if upload_media == "yes": #change this to OR statement after testing
+				if tfname not in all_graph_list:
+					all_graph_list.append(tfname)
+
+					print(f" ** Uploading graphs to the site. This might take a minute.")
+
+					header = header_wp(user, password, tfname)
+					
+					media = {
+							'file': open(cases_graph,"rb")
+							}
+					response_media = upload_image_to_wp(media, url_media, header)
+					# media response
+					resp_json = response_media.json()
+					postid = resp_json['id']
+					caption = 'Cases and Deaths data from https://data.ct.gov/resource/28fr-iqnx'
+					alt_text = f'{graph_title}. {caption}'
+					media_update = {
+						'caption': caption, 
+						'title': graph_title,
+						'author': post_author,
+						'description': alt_text,
+						'alt_text': alt_text
+						}
+					r_update = requests.post(url_media + str(postid), headers=header, json=media_update)
+					r_update = r_update.json()
+					for r in r_update:
+						if r == "media_details":
+							data_trans = r_update["media_details"]
+							img_code = img_code_generate(data_trans, postid, alt_text, caption)
+							gd = {tfname:img_code}
+							graphs_dict.update(gd)
+						else:
+							pass
+				else:
+					pass
+
+			else:
+				pass
+
 			#####################
 			## Get Vax Numbers ##
 			#####################
@@ -486,8 +563,13 @@ for bf in batch_files:
 		mc_all = pluralizer(month_change_all, "town_cases")
 
 
-		all_town_summary = f"<h3>In {alltowns}</h3><p>As of <b>{ccd}</b>:</p><ul>"
-		all_town_summary = all_town_summary + f"<li>{cc_all} positive for Covid over the last <b>{tbr}</b>;</li>"
+		all_town_summary = f"<h3>In {alltowns}</h3><p>As of <b>{ccd}</b>:</p>"
+		for key,value in graphs_dict.items():
+			if key == tfname:
+				all_town_summary = all_town_summary + value
+			else:
+				pass
+		all_town_summary = all_town_summary + f"<ul><li>{cc_all} positive for Covid over the last <b>{tbr}</b>;</li>"
 		all_town_summary = all_town_summary + f"<li>{wc_all} positive for Covid over the last <b>{wdl}</b>;</li>"
 		all_town_summary = all_town_summary + f"<li>{mc_all} positive for Covid over the last <b>{mdl}</b>.</li>"
 		all_town_summary = all_town_summary + "</ul>"
@@ -505,7 +587,7 @@ for bf in batch_files:
 		county_rep_date = df_fips_filter['report_date'].iloc[0]
 		crd = human_date(str(county_rep_date)[:10])
 		county_name = df_fips_filter['county_name'].iloc[0] 
-		county_text = f"<h3>Case and Transmission Levels in {county_name}</h3><p>In {county_name}:"
+		county_text = f"<h3>Case and Transmission Levels in {county_name}</h3><p>In {county_name}: INSERTTRANSGRAPHHERE "
 		county_line = ""
 		# get current values
 		seven_day = df_fips_filter['seven_day'].iloc[0]
@@ -536,10 +618,13 @@ for bf in batch_files:
 		county_line = f"<ul><li>On {ted}, <b>{month_c} ago</b>, the seven day rate was <b>{twentyeight_seven_day} cases per 100k people</b>.</li><ul><li>Test positivity: <b>{twentyeight_positivity}%</b></li><li>Community transmission level: <b>{twentyeight_level}</b></li></ul></ul></p>"
 		county_text = county_text + county_line
 		county_text_all = county_text_all + county_text
+		dffips_len = df_fips_filter.shape[0] - 1
+		earliest_date = df_fips_filter['report_date'].iloc[dffips_len]
+		erd = human_date(str(earliest_date)[:10])
 		## Graph for Community Transmission Rate
 		fig = go.Figure(data=go.Scatter(x=df_fips_filter['report_date'].astype(dtype=str), y=df_fips_filter['seven_day'].astype(dtype=float), marker_color='indianred', text="cases"))
 
-		graph_title = f'Seven day Community Transmission in {county_name}'
+		graph_title = f'Seven day Community Transmission in {county_name} from {erd} to {crd}'
 		fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"Total new COVID-19 cases per 100,000 persons in the last 7 days"}, "showlegend": False})
 		countyfile = ''.join(county_name.split()).lower()
 		cfname = scan_datetime + "_" + countyfile + "_trans.png"
@@ -560,40 +645,41 @@ for bf in batch_files:
 				# media response
 				resp_json = response_media.json()
 				postid = resp_json['id']
-				#print(f"\nPOSTID: {postid}\n")
+				caption = 'Community transmission from https://data.cdc.gov/resource/8396-v7yb'
+				alt_text = f'{graph_title}. {caption}'
 				media_update = {
-					'caption': 'Hospitalization data from https://data.ct.gov/resource/bfnu-rgqt', 
+					'caption': caption, 
 					'title': graph_title,
 					'author': post_author,
-					'description': 'I am a description',
-					'alt_text': 'This is alt text'
-	        		}
+					'description': alt_text,
+					'alt_text': alt_text
+					}
 				r_update = requests.post(url_media + str(postid), headers=header, json=media_update)
 				r_update = r_update.json()
 				for r in r_update:
 					#print (r)
 					if r == "media_details":
-						print(r_update[r]['file'])
-						print(r_update[r]['sizes']['medium']['source_url'])
-						print(r_update[r]['sizes']['medium']['width'])
-						for im in (r_update[r]['sizes']['medium']).items():
-							print(im)
-						#print(r_update[r]['sizes']['full'])
-						#for d in r_update[r]:
-						#	print(d)
+						data_trans = r_update["media_details"]
+						img_code = img_code_generate(data_trans, postid, alt_text, caption)
+						gd = {cfname:img_code}
+						graphs_dict.update(gd)
 					else:
 						pass
-					#print(resp_json[r])
+
 			else:
 				pass
+
+			for key,value in graphs_dict.items():
+				if key == cfname:
+					print(county_text)
+					county_text_all = county_text_all.replace(" INSERTTRANSGRAPHHERE ", value)
+				else:
+					pass
 
 		else:
 			pass
 
-		
-
 	summary_pop = f"<p>{summary_pop} {alltowns} are part of <b>{county_name}</b>.</p>"
-
 
 	hosp_text = ""
 	for cr in counties_report:
@@ -610,7 +696,7 @@ for bf in batch_files:
 		hosp_total = df_hosp_filter['hosp_cases'].iloc[0]
 		hosp_new = df_hosp_filter['new_hosp'].iloc[0]
 		h_new = pluralizer(hosp_new, "hospital")
-		hosp_text = hosp_text + "<h3>Hospitalizations in " + cr + "</h3>"
+		hosp_text = hosp_text + "<h3>Hospitalizations in " + cr + "</h3> INSERTHOSPGRAPHHERE "
 		
 		hosp_text = hosp_text + f"<ul><li>In {cr}, in the <b>{gd} before</b> {h_date}, {h_new} hospitalized with Covid.</li>"
 		
@@ -639,13 +725,76 @@ for bf in batch_files:
 		# County is title
 		# https://stackoverflow.com/questions/43915184/how-to-upload-images-using-wordpress-rest-api-in-python
 		# https://medium.com/nerd-for-tech/how-to-plot-timeseries-data-in-python-and-plotly-1382d205cc2
+		dfhosp_len = df_hosp_filter.shape[0] - 1
+		earliest_hdate = df_hosp_filter['date_updated'].iloc[dfhosp_len]
+		erhd = human_date(str(earliest_hdate)[:10])
 		fig = go.Figure(data=go.Scatter(x=df_hosp_filter['date_updated'].astype(dtype=str), y=df_hosp_filter['hosp_cases'].astype(dtype=int), marker_color='indianred', text="cases"))
 
-		fig.update_layout({"title": f'Hospitalizations in {cr}', "xaxis": {"title":"Date"},"yaxis": {"title":"People hospitalized with Covid"}, "showlegend": False})
+		graph_title = f'Hospitalizations in {cr} from {erhd} to {h_date}'
+		fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"People hospitalized with Covid"}, "showlegend": False})
 		crfile = ''.join(cr.split()).lower()
-		hosp_graph = graph_dir + scan_datetime + "_" + crfile + "_hosp.png"
+		crname = scan_datetime + "_" + crfile + "_hosp.png"
+		hosp_graph = graph_dir + crname
 		fig.write_image(hosp_graph, width=1000, height=600, scale=3)
-		#fig.show()
+		if upload_media == "yes": #change this to OR statement after testing
+			if crname not in all_graph_list:
+				all_graph_list.append(crname)
+
+				print(f" ** Uploading graphs to the site. This might take a minute.")
+
+				header = header_wp(user, password, cfname)
+				
+				media = {
+						'file': open(hosp_graph,"rb")
+						}
+				response_media = upload_image_to_wp(media, url_media, header)
+				# media response
+				resp_json = response_media.json()
+				postid = resp_json['id']
+				caption = 'Hospitalization data from https://data.ct.gov/resource/bfnu-rgqt'
+				alt_text = f'{graph_title}. {caption}'
+				media_update = {
+					'caption': caption, 
+					'title': graph_title,
+					'author': post_author,
+					'description': alt_text,
+					'alt_text': alt_text
+					}
+				r_update = requests.post(url_media + str(postid), headers=header, json=media_update)
+				r_update = r_update.json()
+				for r in r_update:
+					#print (r)
+					if r == "media_details":
+						#print(r_update[r]['file'])
+						#print(r_update[r]['sizes']['medium']['source_url'])
+						#print(r_update[r]['sizes']['medium']['width'])
+						#for im in (r_update[r]['sizes']['medium']).items():
+						#	print(im)
+
+						#for im in (r_update[r]['sizes']['full']).items():
+						#print(im)
+						display_img = r_update[r]['sizes']['medium']['source_url']
+						display_width = r_update[r]['sizes']['medium']['width']
+						full_size_img = r_update[r]['sizes']['full']['source_url']
+						img_code = f'[caption id="attachment_{postid}" align="aligncenter" width="{display_width}"]<a href="{full_size_img}"><img src="{display_img}" alt="{alt_text}" width="{display_width}" /></a>{caption}[/caption]'
+						print(img_code)
+						gd = {crname:img_code}
+						graphs_dict.update(gd)
+					else:
+						pass
+			else:
+				pass
+
+			for key,value in graphs_dict.items():
+				if key == crname:
+					print(hosp_text)
+					print(value)
+					hosp_text = hosp_text.replace(" INSERTHOSPGRAPHHERE ", value)
+				else:
+					pass
+
+		else:
+			pass
 			
 	## Schools
 	## This section is largely manual - blech
@@ -750,31 +899,7 @@ for bf in batch_files:
 			print(f"There seems to be an issue with the update. This was the response code:\n{response}")
 	else:
 		pass
-## Upload media
-	'''
-	if upload_media == "yes": #change this to OR statement after testing
-		print(f" ** Uploading graphs to the site. This might take a minute.")
 
-		credentials = user + ':' + password
-		token = base64.b64encode(credentials.encode())
-		header = {'Authorization': 'Basic ' + token.decode('utf-8')}
-
-		## update the page
-		media = {
-			'title':blog_title, 
-			'alt_text':,
-			'caption':,
-			'description':,
-			'media_type':,
-			'source_url':
-			}
-		response_media = requests.post(url_media, headers=header, json=media)
-
-		# media response
-		print(response_media)
-	else:
-		pass
-	'''
 ## Update summary report page
 	if update_summary == "yes":
 		print(f" ** Updating the summary report. This might take a minute.")
@@ -844,3 +969,7 @@ for bf in batch_files:
 #df_hospital.to_csv('all_hospital.csv', encoding='utf-8', index=False)
 
 print("Done!")
+
+for key,value in graphs_dict.items():
+	print(key)
+	print(value)
