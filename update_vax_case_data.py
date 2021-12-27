@@ -21,10 +21,10 @@ import plotly.graph_objs as go
 
 path_to_batches = "batches/"
 batch_files = ['ct_river_area.json', 'ledgelight.json', 'lyme_oldlyme.json']
-add_style = "yes"
+add_style = "no"
 export_html = "yes"
 update_detailed_report = "yes"
-update_summary = "yes"
+update_summary = "no"
 create_blog = "no"
 upload_media = "yes"
 
@@ -369,6 +369,7 @@ for bf in batch_files:
 				else:
 					pass
 		case_change_all = 0
+		total_all = 0
 		week_change_all = 0
 		week_death_change = 0
 		month_change_all = 0
@@ -410,6 +411,7 @@ for bf in batch_files:
 			c_change = pluralizer(current_change, "town_cases")
 			case_change_all = case_change_all + int(current_change)
 			current_total = df_case_town_filter['total_cases'].iloc[0]
+			total_all = total_all + int(current_total)
 			yesterday_total = df_case_town_filter['total_cases'].iloc[1]
 			current_death = df_case_town_filter['total_deaths'].iloc[0]
 			town_case = f"<ul><li>As of {ccd}: {c_change} positive for Covid over the last <b>{tbr}</b> (from {yesterday_total} people to {current_total} people).</li>"
@@ -472,7 +474,7 @@ for bf in batch_files:
 			df_graph_cases = pd.DataFrame(grouped['total_cases'].agg([np.sum]))
 
 			## Graph for Community Transmission Rate
-			fig = go.Figure(data=go.Scatter(x=df_graph_cases.index.astype(dtype=str), y=df_graph_cases['sum'].astype(dtype=int), marker_color='indianred', text="cases"))
+			fig = go.Figure(data=go.Scatter(x=df_graph_cases.index.astype(dtype=str), y=df_graph_cases['sum'].astype(dtype=int), marker_color='firebrick', text="cases"))
 			#fig = go.Figure(data=go.Scatter(x=grouped['date'], y=grouped['total_cases'].agg([np.sum]), marker_color='indianred', text="cases"))
 			graph_title = f'People with Covid19 in {alltowns} from {at_ed} to {ccd}'
 			fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"People with Positive Cases of Covid19"}, "showlegend": False})
@@ -563,13 +565,13 @@ for bf in batch_files:
 		mc_all = pluralizer(month_change_all, "town_cases")
 
 
-		all_town_summary = f"<h3>In {alltowns}</h3><p>As of <b>{ccd}</b>:</p>"
+		all_town_summary = f"<h3>Positive Cases of Covid19 in {alltowns}</h3><p>As of <b>{ccd}</b>:</p>"
 		for key,value in graphs_dict.items():
 			if key == tfname:
 				all_town_summary = all_town_summary + value
 			else:
 				pass
-		all_town_summary = all_town_summary + f"<ul><li>{cc_all} positive for Covid over the last <b>{tbr}</b>;</li>"
+		all_town_summary = all_town_summary + f"<ul><li>{cc_all} positive for Covid over the last <b>{tbr}</b>, total cases are at <b>{total_all}</b>;</li>"
 		all_town_summary = all_town_summary + f"<li>{wc_all} positive for Covid over the last <b>{wdl}</b>;</li>"
 		all_town_summary = all_town_summary + f"<li>{mc_all} positive for Covid over the last <b>{mdl}</b>.</li>"
 		all_town_summary = all_town_summary + "</ul>"
@@ -622,7 +624,7 @@ for bf in batch_files:
 		earliest_date = df_fips_filter['report_date'].iloc[dffips_len]
 		erd = human_date(str(earliest_date)[:10])
 		## Graph for Community Transmission Rate
-		fig = go.Figure(data=go.Scatter(x=df_fips_filter['report_date'].astype(dtype=str), y=df_fips_filter['seven_day'].astype(dtype=float), marker_color='indianred', text="cases"))
+		fig = go.Figure(data=go.Scatter(x=df_fips_filter['report_date'].astype(dtype=str), y=df_fips_filter['seven_day'].astype(dtype=float), marker_color='crimson', text="cases"))
 
 		graph_title = f'Seven day Community Transmission in {county_name} from {erd} to {crd}'
 		fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"Total new COVID-19 cases per 100,000 persons in the last 7 days"}, "showlegend": False})
@@ -728,7 +730,7 @@ for bf in batch_files:
 		dfhosp_len = df_hosp_filter.shape[0] - 1
 		earliest_hdate = df_hosp_filter['date_updated'].iloc[dfhosp_len]
 		erhd = human_date(str(earliest_hdate)[:10])
-		fig = go.Figure(data=go.Scatter(x=df_hosp_filter['date_updated'].astype(dtype=str), y=df_hosp_filter['hosp_cases'].astype(dtype=int), marker_color='indianred', text="cases"))
+		fig = go.Figure(data=go.Scatter(x=df_hosp_filter['date_updated'].astype(dtype=str), y=df_hosp_filter['hosp_cases'].astype(dtype=int), marker_color='orangered', text="cases"))
 
 		graph_title = f'Hospitalizations in {cr} from {erhd} to {h_date}'
 		fig.update_layout({"title": graph_title, "xaxis": {"title":"Date"},"yaxis": {"title":"People hospitalized with Covid"}, "showlegend": False})
