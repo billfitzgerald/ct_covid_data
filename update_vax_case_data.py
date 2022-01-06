@@ -283,6 +283,7 @@ for f in fips_for_query:
 			county_fips_dict.update(hold) 
 		report_date = fd['report_date'][:10]
 		seven_day = fd['cases_per_100k_7_day_count']
+		seven_day = seven_day.replace(',', '')
 		try:
 			positivity = fd['percent_test_results_reported']
 		except:
